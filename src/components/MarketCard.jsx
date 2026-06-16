@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
-import { getEmoji } from '../utils/flags'
 import CountdownTimer from './CountdownTimer'
 import OptionAvatar from './OptionAvatar'
+
+const archivo = { fontFamily: "'Archivo', sans-serif" }
 
 export default function MarketCard({ market, userBet }) {
   const { user } = useAuth()
@@ -45,21 +46,24 @@ export default function MarketCard({ market, userBet }) {
     }
   }
 
-  const manyOptions = market.options.length > 5
+  const optCols =
+    market.options.length === 2 ? 'grid-cols-2'
+      : market.options.length === 3 ? 'grid-cols-3'
+        : 'grid-cols-2 sm:grid-cols-3'
 
   return (
     <div className="card p-4 space-y-3">
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
-        <h3 className="text-sm font-bold text-slate-900 leading-snug">{market.title}</h3>
-        <span className="text-xs font-bold text-gold bg-gold/10 border border-gold/20 px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
-          {market.points} pts
+        <h3 style={archivo} className="text-[15px] font-extrabold text-[#0E1B33] leading-snug">{market.title}</h3>
+        <span className="text-xs font-extrabold text-[#9A6B00] bg-[#FFF3D6] border border-[#F0DCA0] px-2.5 py-1 rounded-full whitespace-nowrap flex-shrink-0">
+          ⭐ {market.points} pts
         </span>
       </div>
 
       {/* Description */}
       {market.description && (
-        <p className="text-xs text-slate-500 leading-relaxed -mt-1">{market.description}</p>
+        <p className="text-xs text-[#8C8474] leading-relaxed -mt-1">{market.description}</p>
       )}
 
       {/* Status + Timer */}
@@ -72,7 +76,7 @@ export default function MarketCard({ market, userBet }) {
           <span className="badge-closed">Encerrado</span>
         )}
         {isOpen && closesAt && (
-          <div className="flex items-center gap-1 text-slate-500 text-xs">
+          <div className="flex items-center gap-1 text-[#8C8474] text-xs">
             <span>Fecha em</span>
             <CountdownTimer closesAt={market.closesAt} />
           </div>
@@ -81,32 +85,24 @@ export default function MarketCard({ market, userBet }) {
 
       {/* Options — shown when open and no bet yet */}
       {isOpen && !userBet && (
-        <div className="space-y-2">
-          <div className={manyOptions ? 'grid grid-cols-2 gap-1.5' : 'space-y-1.5'}>
+        <div className="space-y-3">
+          <div className={`grid gap-2.5 ${optCols}`}>
             {market.options.map(opt => {
-              const emoji = getEmoji(opt.label)
               const isSelected = selected === opt.id
               return (
                 <button
                   key={opt.id}
                   onClick={() => setSelected(isSelected ? null : opt.id)}
-                  className={`w-full text-left rounded-xl border transition-all duration-150 ${
-                    manyOptions ? 'px-3 py-2.5' : 'px-3.5 py-3'
-                  } ${
-                    isSelected
-                      ? 'bg-gold/10 border-gold text-slate-900 font-semibold'
-                      : 'bg-[#F4F6FB] border-[#E2E7F2] text-slate-600 hover:border-[#B5BFD9] hover:text-slate-900'
-                  }`}
+                  style={isSelected
+                    ? { background: '#F5453B14', border: '2px solid #F5453B' }
+                    : { background: '#fff', border: '2px solid #EBE3D4' }}
+                  className="relative flex items-center gap-2 rounded-2xl px-3 py-2.5 text-left text-[13px] font-bold leading-tight text-[#0E1B33] transition-transform duration-150 hover:-translate-y-0.5"
                 >
-                  <div className="flex items-center gap-2">
-                    <div className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                      isSelected ? 'border-gold' : 'border-gray-600'
-                    }`}>
-                      {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-gold" />}
-                    </div>
-                    <OptionAvatar label={opt.label} />
-                    <span className={manyOptions ? 'text-xs' : 'text-sm'}>{opt.label}</span>
-                  </div>
+                  <OptionAvatar label={opt.label} />
+                  <span className="min-w-0 flex-1">{opt.label}</span>
+                  {isSelected && (
+                    <span style={{ background: '#F5453B' }} className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-black text-white shadow">✓</span>
+                  )}
                 </button>
               )
             })}
@@ -114,15 +110,16 @@ export default function MarketCard({ market, userBet }) {
 
           {selected && (
             <div className="space-y-2 pt-1">
-              {error && <p className="text-red-600 text-xs">{error}</p>}
+              {error && <p className="text-[#C8281F] text-xs font-semibold">{error}</p>}
               <button
                 onClick={handleBet}
                 disabled={loading}
-                className="btn-primary w-full text-sm"
+                style={archivo}
+                className="w-full rounded-2xl bg-[#0E1B33] py-3 text-sm font-extrabold text-white transition hover:brightness-110 disabled:opacity-50"
               >
-                {loading ? 'A registar...' : 'Confirmar Aposta'}
+                {loading ? 'A registar...' : 'Confirmar Aposta 🎯'}
               </button>
-              <p className="text-center text-xs text-slate-400">A aposta não pode ser alterada</p>
+              <p className="text-center text-xs text-[#A89E88]">A aposta não pode ser alterada</p>
             </div>
           )}
         </div>
@@ -130,20 +127,20 @@ export default function MarketCard({ market, userBet }) {
 
       {/* Closed with no bet */}
       {!isOpen && !isResolved && !userBet && (
-        <p className="text-xs text-slate-400 text-center py-1">Encerrado sem aposta</p>
+        <p className="text-xs text-[#A89E88] text-center py-1">Encerrado sem aposta</p>
       )}
 
       {/* User bet — locked */}
       {userBet && !isResolved && userOption && (
-        <div className="bg-[#F4F6FB] border border-[#E2E7F2] rounded-xl px-3.5 py-3 flex items-center justify-between">
+        <div className="bg-white border-2 border-[#EBE3D4] rounded-2xl px-3.5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <OptionAvatar label={userOption.label} />
             <div>
-              <p className="text-xs text-slate-500">A tua aposta</p>
-              <p className="text-sm font-semibold text-slate-900">{userOption.label}</p>
+              <p className="text-xs text-[#8C8474]">A tua aposta</p>
+              <p className="text-sm font-bold text-[#0E1B33]">{userOption.label}</p>
             </div>
           </div>
-          <span className="text-xs text-slate-500 bg-[#EEF2FB] px-2 py-1 rounded-full">🔒 Apostado</span>
+          <span className="text-xs font-semibold text-[#8C8474] bg-[#F3ECDD] px-2.5 py-1 rounded-full">🔒 Apostado</span>
         </div>
       )}
 
@@ -151,35 +148,35 @@ export default function MarketCard({ market, userBet }) {
       {isResolved && (
         <div className="space-y-2">
           {winningOption && (
-            <div className="bg-gold/5 border border-gold/20 rounded-xl px-3.5 py-2.5">
-              <p className="text-xs text-slate-500 mb-0.5">Resultado</p>
+            <div className="bg-[#FFF3D6] border border-[#F0DCA0] rounded-2xl px-3.5 py-2.5">
+              <p className="text-xs text-[#8C8474] mb-0.5">Resultado</p>
               <div className="flex items-center gap-2">
                 <OptionAvatar label={winningOption.label} />
-                <p className="text-sm font-bold text-gold">{winningOption.label}</p>
+                <p className="text-sm font-extrabold text-[#9A6B00]">{winningOption.label}</p>
               </div>
             </div>
           )}
           {userOption && (
-            <div className={`rounded-xl px-3.5 py-2.5 border flex items-center justify-between ${
+            <div className={`rounded-2xl px-3.5 py-2.5 border-2 flex items-center justify-between ${
               userWon
-                ? 'bg-green-500/10 border-green-500/30'
-                : 'bg-red-500/10 border-red-500/30'
+                ? 'bg-[#15A66E]/10 border-[#15A66E]/40'
+                : 'bg-[#F5453B]/10 border-[#F5453B]/40'
             }`}>
               <div className="flex items-center gap-2">
                 <OptionAvatar label={userOption.label} />
                 <div>
-                  <p className="text-xs text-slate-500">A tua aposta</p>
-                  <p className="text-sm font-semibold text-slate-900">{userOption.label}</p>
+                  <p className="text-xs text-[#8C8474]">A tua aposta</p>
+                  <p className="text-sm font-bold text-[#0E1B33]">{userOption.label}</p>
                 </div>
               </div>
               <div className="text-right">
                 <span className="text-lg">{userWon ? '✅' : '❌'}</span>
-                {userWon && <p className="text-xs text-green-400 font-bold">+{market.points} pts</p>}
+                {userWon && <p className="text-xs text-[#15A66E] font-bold">+{market.points} pts</p>}
               </div>
             </div>
           )}
           {!userBet && (
-            <p className="text-xs text-slate-400 text-center py-1">Sem aposta registada</p>
+            <p className="text-xs text-[#A89E88] text-center py-1">Sem aposta registada</p>
           )}
         </div>
       )}
