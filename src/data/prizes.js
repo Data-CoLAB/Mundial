@@ -19,7 +19,7 @@ export const PRIZES = [
     medal: '🥉', rank: '3º', color: 'text-amber-700',
     border: 'border-amber-700/40', glow: 'shadow-amber-700/10',
     bg: 'from-amber-600/20 to-amber-600/5',
-    prizeImg: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/SuperBock.jpg/200px-SuperBock.jpg',
+    prizeImg: '/superbock.jpg',
     prizeIcon: '🍺', prize: 'Caixa de Cerveja', prizeDetail: 'Super Bock · Bem merecida',
     prizeColor: 'text-amber-700', prizeBg: 'bg-amber-600/15 border-amber-700/40',
   },
