@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #EEF1F8;
+  color: #1A1F36;
+  font-family: 'Inter', system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #E2E7F2;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #7A2BF5, #2F6BFF, #18C76F, #FBB03B);
+  border-radius: 2px;
+}
+
+@layer utilities {
+  .card {
+    @apply bg-white border border-[#E2E7F2] rounded-2xl shadow-sm shadow-slate-300/40;
+  }
+  /* Faixa multicolor — assinatura do Mundial 2026 */
+  .wc-stripe {
+    background: linear-gradient(90deg, #7A2BF5, #2F6BFF, #22E0C4, #18C76F, #A8E024, #FBB03B, #F2306E);
+  }
+  .wc-text {
+    background: linear-gradient(90deg, #7A2BF5, #2F6BFF, #18C76F, #FBB03B, #F2306E);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .btn-primary {
+    @apply bg-gold text-black font-bold py-3 px-6 rounded-xl hover:bg-gold-dark transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply bg-[#E2E7F2] text-slate-700 font-semibold py-3 px-6 rounded-xl hover:bg-[#D3DAEC] transition-colors duration-150;
+  }
+  .badge-open {
+    @apply bg-green-500/15 text-green-700 border border-green-600/30 text-xs font-semibold px-2 py-0.5 rounded-full;
+  }
+  .badge-closed {
+    @apply bg-slate-400/15 text-slate-500 border border-slate-400/30 text-xs font-semibold px-2 py-0.5 rounded-full;
+  }
+  .badge-resolved {
+    @apply bg-gold/10 text-gold border border-gold/20 text-xs font-semibold px-2 py-0.5 rounded-full;
+  }
+}

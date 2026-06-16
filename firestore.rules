@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isMarketOpen(marketId) {
+      let market = get(/databases/$(database)/documents/markets/$(marketId));
+      return market.data.status == 'open' && market.data.closesAt > request.time;
+    }
+
+    // Users — readable by all authenticated (for leaderboard)
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId
+        && request.resource.data.totalPoints == 0
+        && request.resource.data.role == 'user';
+      allow update: if isAuthenticated() && request.auth.uid == userId
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['totalPoints', 'role']);
+    }
+
+    // Markets — readable by all, writable only by admin
+    match /markets/{marketId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Bets — user can create their own, read their own; admin reads all
+    match /bets/{betId} {
+      allow read: if isAuthenticated() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && betId == request.auth.uid + '_' + request.resource.data.marketId
+        && isMarketOpen(request.resource.data.marketId)
+        && request.resource.data.keys().hasOnly(['userId', 'marketId', 'optionId', 'placedAt']);
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Pódio picks — 1 por utilizador, imutável após submissão, fecha 17 Jun 17:00 UTC
+    match /podiumPicks/{uid} {
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
+      allow create: if isAuthenticated()
+        && request.auth.uid == uid
+        && request.time < timestamp.date(2026, 6, 18)
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasOnly(['userId', 'tier1', 'tier2', 'tier3', 'placedAt'])
+        && request.resource.data.tier1 is string
+        && request.resource.data.tier2 is string
+        && request.resource.data.tier3 is string;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Config (resolução do Pódio) — só Cloud Function escreve via Admin SDK
+    match /config/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+  }
+}
