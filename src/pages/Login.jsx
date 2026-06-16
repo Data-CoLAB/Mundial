@@ -132,7 +132,7 @@ export default function Login() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4">
-            <span className="text-5xl">⚽</span>
+            <img src="/logo.jpg" alt="" className="w-14 h-14 rounded-full object-cover" />
             <span className="text-6xl font-black text-slate-900 tracking-tighter leading-none">26</span>
           </div>
           <div className="h-1 w-32 mx-auto rounded-full wc-stripe mb-4" />
