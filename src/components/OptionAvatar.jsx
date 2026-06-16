@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getFlagUrl, isKnownCountry } from '../utils/flags'
+import { getFlagUrl } from '../utils/flags'
 
 // Wikipedia page titles for known players
 const WIKI_PAGES = {
@@ -31,17 +31,12 @@ const cache = {}
 
 export default function OptionAvatar({ label }) {
   const flagUrl = getFlagUrl(label)
-  const isCountry = isKnownCountry(label)
-  // Preserva o valor em cache, incluindo `null` ("sem imagem" → fallback ⚽).
-  // Usar `?? undefined` convertia o `null` em `undefined`, prendendo o avatar
-  // no estado de loading quando o componente voltava a montar.
+  const isPlayer = !!WIKI_PAGES[label]
   const [playerImg, setPlayerImg] = useState(label in cache ? cache[label] : undefined)
 
   useEffect(() => {
-    if (isCountry || cache[label] !== undefined) return
+    if (!isPlayer || cache[label] !== undefined) return
     const page = WIKI_PAGES[label]
-    if (!page) { cache[label] = null; setPlayerImg(null); return }
-
     fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${page}`)
       .then(r => r.json())
       .then(data => {
@@ -53,7 +48,7 @@ export default function OptionAvatar({ label }) {
         cache[label] = null
         setPlayerImg(null)
       })
-  }, [label, isCountry])
+  }, [label, isPlayer])
 
   // Country flag
   if (flagUrl) {
@@ -66,8 +61,8 @@ export default function OptionAvatar({ label }) {
     )
   }
 
-  // Continent / unknown country — no image
-  if (isCountry && !flagUrl) return null
+  // No avatar for generic options (números, sim/não), continents or unknown countries
+  if (!isPlayer) return null
 
   // Player photo loading
   if (playerImg === undefined) {
@@ -85,10 +80,6 @@ export default function OptionAvatar({ label }) {
     )
   }
 
-  // Fallback — no image found
-  return (
-    <div className="w-8 h-8 rounded-full bg-[#E2E7F2] flex items-center justify-center flex-shrink-0 text-sm">
-      ⚽
-    </div>
-  )
+  // Known player but no photo found — no avatar
+  return null
 }
