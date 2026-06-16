@@ -32,7 +32,10 @@ const cache = {}
 export default function OptionAvatar({ label }) {
   const flagUrl = getFlagUrl(label)
   const isCountry = isKnownCountry(label)
-  const [playerImg, setPlayerImg] = useState(cache[label] ?? undefined)
+  // Preserva o valor em cache, incluindo `null` ("sem imagem" → fallback ⚽).
+  // Usar `?? undefined` convertia o `null` em `undefined`, prendendo o avatar
+  // no estado de loading quando o componente voltava a montar.
+  const [playerImg, setPlayerImg] = useState(label in cache ? cache[label] : undefined)
 
   useEffect(() => {
     if (isCountry || cache[label] !== undefined) return
