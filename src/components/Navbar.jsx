@@ -26,7 +26,7 @@ export default function Navbar() {
       <div className="h-1 wc-stripe" />
       <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
-          <span className="text-xl">⚽</span>
+          <img src="/logo.jpg" alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
           <span className="font-black text-slate-900 tracking-tight">Data<span className="text-gold">Bets</span></span>
           <span className="text-[10px] font-black text-black bg-gold rounded px-1 py-0.5 leading-none tracking-tight">26</span>
         </Link>
