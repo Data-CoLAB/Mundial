@@ -5,6 +5,9 @@ import { useAuth } from '../contexts/AuthContext'
 import { TIERS, CLOSE_AT, POINTS_BY_ROUND, ROUND_LABELS, ROUNDS } from '../data/podiumTiers'
 import { FLAG } from '../data/worldcupGroups'
 
+const archivo = { fontFamily: "'Archivo', sans-serif" }
+const ACCENT = '#F5453B'
+
 function Flag({ team, size = 18 }) {
   const code = FLAG[team]
   if (!code) return null
@@ -193,29 +196,35 @@ export default function PodiumPicker() {
   }
 
   // ── OPEN — picking phase ──────────────────────────────────────────
-  const allPicked = picks.tier1 && picks.tier2 && picks.tier3
+  const pickedCount = [picks.tier1, picks.tier2, picks.tier3].filter(Boolean).length
+  const allPicked = pickedCount === 3
+  const boxStyle = (selected) =>
+    selected
+      ? { background: ACCENT + '14', border: `2px solid ${ACCENT}`, color: '#0E1B33' }
+      : { background: '#fff', border: '2px solid #EBE3D4', color: '#0E1B33' }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5" style={{ fontFamily: "'Noto Sans', sans-serif" }}>
       {/* Header */}
-      <div className="card overflow-hidden bg-gradient-to-br from-electric/20 to-[#F4F6FB] relative">
-        <div className="h-1 bg-gradient-to-r from-electric via-royal to-aqua" />
-        <div className="p-4">
-        <p className="text-sm font-bold text-slate-900 mb-1">
-          🔮 Oracle — escolhe 1 seleção por tier
-        </p>
-        {isClosed ? (
-          <p className="text-xs text-red-600 font-semibold">Apostas encerradas.</p>
-        ) : (
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-xs text-slate-500">Fecha 17 Jun às 18h00</p>
-            {countdown && (
-              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-600 border border-red-500/30">
-                {countdown}
-              </span>
-            )}
-          </div>
-        )}
+      <div className="relative overflow-hidden rounded-2xl bg-[#0E1B33] text-white">
+        <div className="flex h-[5px]">
+          {['#F5453B', '#FF8A3D', '#F2B705', '#15A66E', '#2D7FF0', '#7C5CFF'].map(c => (
+            <div key={c} className="flex-1" style={{ background: c }} />
+          ))}
+        </div>
+        <div className="p-5">
+          <p style={archivo} className="text-[17px] font-extrabold">🔮 Oracle — escolhe 1 seleção por tier</p>
+          <p className="mt-1 text-[13px] text-[#C9D2E3]">Quanto mais longe cada seleção chegar, mais pontos extra ganhas no fim.</p>
+          {isClosed ? (
+            <span className="mt-3 inline-block rounded-full bg-[#FCE5E3] px-3 py-1 text-xs font-bold text-[#C8281F]">Apostas encerradas</span>
+          ) : (
+            <div className="mt-3 inline-flex items-center gap-2">
+              <span className="text-[12px] text-[#9FB0C9]">Fecha 17 Jun · 18h00</span>
+              {countdown && (
+                <span style={archivo} className="rounded-full bg-white/10 px-2.5 py-1 text-[12px] font-bold text-[#FFC222]">{countdown}</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -223,36 +232,35 @@ export default function PodiumPicker() {
       {TIERS.map(tier => {
         const selected = picks[tier.id]
         return (
-          <div key={tier.id} className="card overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#E2E7F2] flex items-center gap-2">
-              <span className="text-lg">{tier.emoji}</span>
-              <div className="flex-1 min-w-0">
-                <span className="text-sm font-bold text-slate-900">{tier.label}</span>
-                <span className="text-sm text-slate-500"> · {tier.subtitle}</span>
-              </div>
+          <div key={tier.id}>
+            <div className="mb-2.5 flex items-center gap-2">
+              <span className="text-xl">{tier.emoji}</span>
+              <span style={archivo} className="text-[15px] font-extrabold text-[#0E1B33]">{tier.label}</span>
+              <span className="text-[13px] text-[#8C8474]">· {tier.subtitle}</span>
               {selected && (
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Flag team={selected} size={16} />
-                  <span className="text-xs font-semibold text-electric-light">{selected} ✓</span>
-                </div>
+                <span className="ml-auto inline-flex items-center gap-1.5 text-[12px] font-bold" style={{ color: ACCENT }}>
+                  <Flag team={selected} size={14} /> {selected}
+                </span>
               )}
             </div>
-            <div className="p-3 flex flex-wrap gap-1.5">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
               {tier.teams.map(team => {
-                const isSelected = selected === team
+                const isSel = selected === team
                 return (
                   <button
                     key={team}
                     onClick={() => select(tier.id, team)}
                     disabled={isClosed}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150 ${
-                      isSelected
-                        ? 'bg-electric text-white ring-2 ring-electric/40'
-                        : 'bg-[#F4F6FB] border border-[#E2E7F2] text-slate-600 hover:border-electric/50 hover:text-slate-900 active:scale-95'
-                    }`}
+                    style={boxStyle(isSel)}
+                    className="relative flex items-center gap-2.5 rounded-2xl px-3.5 py-3 text-left text-[13.5px] font-bold leading-tight transition-transform duration-150 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <Flag team={team} size={16} />
-                    {team}
+                    <Flag team={team} size={22} />
+                    <span className="min-w-0 flex-1">{team}</span>
+                    {isSel && (
+                      <span style={{ background: ACCENT }} className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-black text-white shadow">
+                        ✓
+                      </span>
+                    )}
                   </button>
                 )
               })}
@@ -261,57 +269,30 @@ export default function PodiumPicker() {
         )
       })}
 
-      {/* Summary + submit */}
-      <div className="card p-4 space-y-3">
-        <div className="grid grid-cols-3 gap-2">
-          {TIERS.map(tier => {
-            const team = picks[tier.id]
-            return (
-              <div
-                key={tier.id}
-                className={`flex flex-col items-center text-center p-2.5 rounded-xl border transition-colors ${
-                  team ? 'border-electric/50 bg-electric/10' : 'border-[#E2E7F2]'
-                }`}
-              >
-                <span className="text-lg">{tier.emoji}</span>
-                {team ? (
-                  <>
-                    <div className="mt-1.5">
-                      <Flag team={team} size={20} />
-                    </div>
-                    <p className="text-[10px] font-semibold text-slate-900 mt-1 leading-tight line-clamp-2">{team}</p>
-                  </>
-                ) : (
-                  <p className="text-[10px] text-slate-400 mt-1.5 leading-tight">Por<br/>escolher</p>
-                )}
-              </div>
-            )
-          })}
-        </div>
+      {error && <p className="text-center text-sm font-semibold text-[#C8281F]">{error}</p>}
 
-        {error && <p className="text-xs text-red-600 text-center">{error}</p>}
-
-        <button
-          onClick={submit}
-          disabled={!allPicked || submitting || isClosed}
-          className="w-full bg-electric text-white font-bold py-3 px-6 rounded-xl hover:bg-electric-dark transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {submitting ? 'A confirmar...' : 'Confirmar Oracle 🔮'}
-        </button>
-      </div>
+      {/* Submit */}
+      <button
+        onClick={submit}
+        disabled={!allPicked || submitting || isClosed}
+        style={archivo}
+        className="w-full rounded-2xl bg-[#0E1B33] py-3.5 text-base font-extrabold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {submitting ? 'A confirmar...' : allPicked ? 'Confirmar Oracle 🔮' : `Escolhe as 3 seleções · ${pickedCount}/3`}
+      </button>
 
       {/* Points scale reference */}
-      <div className="card p-4 bg-gradient-to-r from-[#EEF2FB] to-[#F4F6FB]">
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Oracle · Pontos por fase atingida</p>
+      <div className="rounded-2xl border border-[#ECE4D6] bg-white p-4">
+        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#8C8474]">Pontos por fase atingida</p>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
           {ROUNDS.map(r => (
             <div key={r.id} className="flex items-center justify-between text-xs">
-              <span className="text-slate-500">{r.label.replace(' 🏆', '')}</span>
-              <span className="text-gold font-bold">{r.pts} pts</span>
+              <span className="text-[#8C8474]">{r.label.replace(' 🏆', '')}</span>
+              <span style={{ color: '#F2B705' }} className="font-bold">{r.pts} pts</span>
             </div>
           ))}
         </div>
-        <p className="text-[10px] text-slate-400 mt-3">Máx. teórico: 450 pts (3 × campeão)</p>
+        <p className="mt-3 text-[10px] text-[#A89E88]">Máx. teórico: 450 pts (3 × campeão)</p>
       </div>
     </div>
   )

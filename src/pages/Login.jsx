@@ -127,7 +127,10 @@ export default function Login() {
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">
             Data<span className="text-gold">Bets</span>
           </h1>
-          <p className="text-slate-500 mt-2 text-sm">Mundial 2026 · Apostas internas</p>
+          <p className="text-slate-900 mt-3 text-lg font-black leading-tight">
+            Faz o teu palpite.<br />Ganha o Mundial da empresa. 🏆
+          </p>
+          <p className="text-slate-500 mt-2 text-sm">Sem saber nada de futebol — só de arriscar bem. 🎯</p>
         </div>
 
         {/* Card */}
