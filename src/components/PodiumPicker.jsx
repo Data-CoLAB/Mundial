@@ -3,25 +3,10 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 import { TIERS, CLOSE_AT, POINTS_BY_ROUND, ROUND_LABELS, ROUNDS } from '../data/podiumTiers'
-import { FLAG } from '../data/worldcupGroups'
+import Flag from './Flag'
 
 const archivo = { fontFamily: "'Archivo', sans-serif" }
 const ACCENT = '#F5453B'
-
-function Flag({ team, size = 18 }) {
-  const code = FLAG[team]
-  if (!code) return null
-  const h = Math.round(size * 0.75)
-  return (
-    <img
-      src={`https://flagcdn.com/${code}.svg`}
-      alt=""
-      loading="lazy"
-      className="shrink-0 rounded-[2px] object-cover"
-      style={{ width: size, height: h }}
-    />
-  )
-}
 
 function useCountdown(target) {
   const [label, setLabel] = useState('')

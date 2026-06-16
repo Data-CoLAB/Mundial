@@ -44,6 +44,7 @@ export const FLAG = {
   'Jordânia': 'jo',
   'Portugal': 'pt',
   'Congo RD': 'cd',
+  'Congo': 'cd',
   'Uzbequistão': 'uz',
   'Colômbia': 'co',
   'Inglaterra': 'gb-eng',

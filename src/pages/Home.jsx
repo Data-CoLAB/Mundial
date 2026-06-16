@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import Navbar from '../components/Navbar'
 import MarketCard from '../components/MarketCard'
 import PodiumPicker from '../components/PodiumPicker'
+import Flag from '../components/Flag'
 
 function TabCountdown({ closesAt, active, onGold }) {
   const [label, setLabel] = useState('')
@@ -256,11 +257,15 @@ export default function Home() {
             {sortedGames.length === 0 && (
               <div className="text-center py-10 text-slate-500 text-sm">Sem jogos de Portugal ainda.</div>
             )}
-            {sortedGames.map(([gameLabel, group]) => (
+            {sortedGames.map(([gameLabel, group]) => {
+              const opponent = gameLabel.replace(/^\s*Portugal\s+vs\s+/i, '').trim()
+              const hasOpponent = opponent && opponent !== gameLabel
+              return (
               <section key={gameLabel}>
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xl">🇵🇹</span>
+                  <Flag team="Portugal" size={24} />
                   <h2 className="text-sm font-bold text-slate-900">{gameLabel}</h2>
+                  {hasOpponent && <Flag team={opponent} size={24} />}
                 </div>
                 <div className="space-y-3">
                   {group.markets.map(m => (
@@ -268,7 +273,8 @@ export default function Home() {
                   ))}
                 </div>
               </section>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

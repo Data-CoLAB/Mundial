@@ -1,21 +1,7 @@
 import { useState } from 'react'
 import Navbar from '../components/Navbar'
-import { groups, FLAG } from '../data/worldcupGroups'
-
-function Flag({ team, size = 20 }) {
-  const code = FLAG[team]
-  const h = Math.round(size * 0.75)
-  if (!code) return <span className="text-xs font-bold text-slate-500 shrink-0">{team.slice(0, 3).toUpperCase()}</span>
-  return (
-    <img
-      src={`https://flagcdn.com/${size}x${h}.png`}
-      srcSet={`https://flagcdn.com/${size * 2}x${h * 2}.png 2x`}
-      alt=""
-      className="rounded-[2px] shrink-0 object-cover"
-      style={{ width: size, height: h }}
-    />
-  )
-}
+import { groups } from '../data/worldcupGroups'
+import Flag from '../components/Flag'
 
 function computeStandings(group) {
   const seen = new Set()
