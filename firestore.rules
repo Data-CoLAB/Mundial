@@ -40,6 +40,7 @@ service cloud.firestore {
         && request.resource.data.userId == request.auth.uid
         && betId == request.auth.uid + '_' + request.resource.data.marketId
         && isMarketOpen(request.resource.data.marketId)
+        && request.resource.data.placedAt == request.time
         && request.resource.data.keys().hasOnly(['userId', 'marketId', 'optionId', 'placedAt']);
       allow update: if false;
       allow delete: if false;
@@ -50,8 +51,9 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
       allow create: if isAuthenticated()
         && request.auth.uid == uid
-        && request.time < timestamp.date(2026, 6, 18)
+        && request.time < timestamp.date(2026, 6, 17) + duration.value(17, 'h')
         && request.resource.data.userId == request.auth.uid
+        && request.resource.data.placedAt == request.time
         && request.resource.data.keys().hasOnly(['userId', 'tier1', 'tier2', 'tier3', 'placedAt'])
         && request.resource.data.tier1 is string
         && request.resource.data.tier2 is string
@@ -60,7 +62,7 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Config (resolução do Pódio) — só Cloud Function escreve via Admin SDK
+    // Config (resolução do Pódio) — só a função servidor (Vercel /api) escreve via Admin SDK
     match /config/{docId} {
       allow read: if isAuthenticated();
       allow write: if false;

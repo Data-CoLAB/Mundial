@@ -1,11 +1,22 @@
 import { useState, useEffect } from 'react'
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, orderBy, query, getDocs, getDoc, serverTimestamp, Timestamp } from 'firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
-import { db, functions } from '../firebase'
+import { db, auth } from '../firebase'
 import Navbar from '../components/Navbar'
 import { ROUNDS, ROUND_LABELS, POINTS_BY_ROUND } from '../data/podiumTiers'
 import { FLAG } from '../data/worldcupGroups'
 import PodiumPicker from '../components/PodiumPicker'
+
+async function callApi(path, payload) {
+  const token = await auth.currentUser.getIdToken()
+  const res = await fetch(`/api/${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || `Erro ${res.status}`)
+  return data
+}
 
 const SQUAD = [
   'Diogo Costa', 'António Silva', 'Rúben Dias', 'João Cancelo', 'Nuno Mendes',
@@ -283,9 +294,8 @@ export default function Admin() {
     if (!winId) { notify('Seleciona a opção vencedora'); return }
     setResolving(r => ({ ...r, [market.id]: true }))
     try {
-      const fn = httpsCallable(functions, 'resolveMarket')
-      const result = await fn({ marketId: market.id, winningOptionId: winId })
-      notify(`✅ Resolvido! ${result.data.winnersCount} vencedor(es)`)
+      const result = await callApi('resolveMarket', { marketId: market.id, winningOptionId: winId })
+      notify(`✅ Resolvido! ${result.winnersCount} vencedor(es)`)
     } catch (err) {
       notify('Erro: ' + err.message)
     } finally {
@@ -520,9 +530,8 @@ export default function Admin() {
                           if (!window.confirm(`Distribuir pontos do Pódio a ${podiumPicks.length} utilizadores? Esta ação não pode ser desfeita.`)) return
                           setResolvingPodium(true)
                           try {
-                            const fn = httpsCallable(functions, 'resolvePodium')
-                            const res = await fn({ results: teamResults })
-                            notify(`✅ Pódio resolvido! ${res.data.picksResolved} picks processados.`)
+                            const res = await callApi('resolvePodium', { results: teamResults })
+                            notify(`✅ Pódio resolvido! ${res.picksResolved} picks processados.`)
                             setPodiumConfig({ resolved: true, results: teamResults })
                           } catch (err) {
                             notify('Erro: ' + err.message)
