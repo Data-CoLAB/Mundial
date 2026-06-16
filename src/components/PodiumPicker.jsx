@@ -14,10 +14,10 @@ function Flag({ team, size = 18 }) {
   const h = Math.round(size * 0.75)
   return (
     <img
-      src={`https://flagcdn.com/${size}x${h}.png`}
-      srcSet={`https://flagcdn.com/${size * 2}x${h * 2}.png 2x`}
+      src={`https://flagcdn.com/${code}.svg`}
       alt=""
-      className="rounded-[2px] shrink-0"
+      loading="lazy"
+      className="shrink-0 rounded-[2px] object-cover"
       style={{ width: size, height: h }}
     />
   )
