@@ -198,6 +198,9 @@ export default function PodiumPicker() {
   // ── OPEN — picking phase ──────────────────────────────────────────
   const pickedCount = [picks.tier1, picks.tier2, picks.tier3].filter(Boolean).length
   const allPicked = pickedCount === 3
+  // Máximo real: só há 1 campeão e 1 vice, por isso o melhor cenário com 3
+  // seleções distintas é campeão + vice + 1 meias-finalista.
+  const maxTheoretical = POINTS_BY_ROUND.campeao + POINTS_BY_ROUND.final + POINTS_BY_ROUND.meias
   const boxStyle = (selected) =>
     selected
       ? { background: ACCENT + '14', border: `2px solid ${ACCENT}`, color: '#0E1B33' }
@@ -292,7 +295,7 @@ export default function PodiumPicker() {
             </div>
           ))}
         </div>
-        <p className="mt-3 text-[10px] text-[#A89E88]">Máx. teórico: 450 pts (3 × campeão)</p>
+        <p className="mt-3 text-[10px] text-[#A89E88]">Máx. teórico: {maxTheoretical} pts (campeão + vice + meias)</p>
       </div>
     </div>
   )
