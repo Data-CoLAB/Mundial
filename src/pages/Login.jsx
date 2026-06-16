@@ -8,6 +8,7 @@ import {
 } from 'firebase/auth'
 import { auth } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
+import { setPendingName } from '../authPending'
 import PrizeImg from '../components/PrizeImg'
 import { PRIZES } from '../data/prizes'
 
@@ -83,6 +84,7 @@ export default function Login() {
 
     setLoading(true)
     try {
+      setPendingName(name.trim())
       const cred = await createUserWithEmailAndPassword(auth, email, password)
       await updateProfile(cred.user, { displayName: name.trim() })
     } catch (err) {
