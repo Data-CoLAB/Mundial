@@ -16,25 +16,12 @@ service cloud.firestore {
       return market.data.status == 'open' && market.data.closesAt > request.time;
     }
 
-    // Email verificado + domínio da empresa — exigido só para CRIAR um perfil novo.
-    function isVerifiedCompany() {
-      return request.auth.token.email_verified == true
-        && request.auth.token.email.lower().matches('.*@datacolab[.]pt');
-    }
-
-    // Já tem perfil = já registado (verificado ou de antes desta regra).
-    // Usado para apostar: assim os utilizadores JÁ registados não são afetados.
-    function userHasProfile() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
     // Users — readable by all authenticated (for leaderboard)
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.auth.uid == userId
         && request.resource.data.totalPoints == 0
-        && request.resource.data.role == 'user'
-        && isVerifiedCompany();
+        && request.resource.data.role == 'user';
       allow update: if isAuthenticated() && request.auth.uid == userId
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['totalPoints', 'role']);
     }
@@ -53,7 +40,6 @@ service cloud.firestore {
         && request.resource.data.userId == request.auth.uid
         && betId == request.auth.uid + '_' + request.resource.data.marketId
         && isMarketOpen(request.resource.data.marketId)
-        && userHasProfile()
         && request.resource.data.placedAt == request.time
         && request.resource.data.keys().hasOnly(['userId', 'marketId', 'optionId', 'placedAt']);
       allow update: if false;
@@ -65,7 +51,6 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
       allow create: if isAuthenticated()
         && request.auth.uid == uid
-        && userHasProfile()
         && request.time < timestamp.date(2026, 6, 17) + duration.value(17, 'h')
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.placedAt == request.time

@@ -8,57 +8,45 @@ const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
-  const [needsVerification, setNeedsVerification] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (!firebaseUser) {
-        setUser(null)
-        setNeedsVerification(false)
-        setLoading(false)
-        return
-      }
+      if (firebaseUser) {
+        try {
+          const userRef = doc(db, 'users', firebaseUser.uid)
+          const userSnap = await getDoc(userRef)
 
-      const emailPrefix = firebaseUser.email.split('@')[0]
-      const displayName = firebaseUser.displayName || getPendingName() || emailPrefix
+          const emailPrefix = firebaseUser.email.split('@')[0]
 
-      try {
-        const userRef = doc(db, 'users', firebaseUser.uid)
-        const userSnap = await getDoc(userRef)
-
-        if (userSnap.exists()) {
-          // Utilizador JÁ registado — entra e aposta normalmente (não é afetado
-          // pela verificação de email; só os novos é que precisam de verificar).
-          const data = userSnap.data()
-          if (firebaseUser.displayName && data.name === emailPrefix && data.name !== firebaseUser.displayName) {
-            await setDoc(userRef, { name: firebaseUser.displayName }, { merge: true })
-            data.name = firebaseUser.displayName
+          if (!userSnap.exists()) {
+            const newUser = {
+              name: firebaseUser.displayName || getPendingName() || emailPrefix,
+              email: firebaseUser.email,
+              totalPoints: 0,
+              role: 'user',
+              createdAt: serverTimestamp(),
+            }
+            await setDoc(userRef, newUser)
+            setUser({ uid: firebaseUser.uid, ...newUser, totalPoints: 0 })
+          } else {
+            const data = userSnap.data()
+            // Self-heal: contas antigas guardaram o prefixo do email em vez do nome
+            // real. Se o displayName (definido no registo) existir e o doc tiver o
+            // prefixo, corrige o nome.
+            if (firebaseUser.displayName && data.name === emailPrefix && data.name !== firebaseUser.displayName) {
+              await setDoc(userRef, { name: firebaseUser.displayName }, { merge: true })
+              data.name = firebaseUser.displayName
+            }
+            setUser({ uid: firebaseUser.uid, ...data })
           }
-          setUser({ uid: firebaseUser.uid, ...data })
-          setNeedsVerification(false)
-        } else if (firebaseUser.emailVerified) {
-          // Novo utilizador, já verificado → cria o documento.
-          const newUser = {
-            name: displayName,
-            email: firebaseUser.email,
-            totalPoints: 0,
-            role: 'user',
-            createdAt: serverTimestamp(),
-          }
-          await setDoc(userRef, newUser)
-          setUser({ uid: firebaseUser.uid, ...newUser, totalPoints: 0 })
-          setNeedsVerification(false)
-        } else {
-          // Novo utilizador, sem documento e por verificar → ecrã de verificação.
-          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: displayName, role: 'user', totalPoints: 0 })
-          setNeedsVerification(true)
+        } catch (err) {
+          console.error('Erro ao carregar utilizador:', err)
+          // Still set basic user so app doesn't hang — Firestore rules may not be deployed yet
+          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: firebaseUser.displayName || firebaseUser.email.split('@')[0], totalPoints: 0, role: 'user' })
         }
-      } catch (err) {
-        console.error('Erro ao carregar utilizador:', err)
-        // Em caso de erro de leitura, não bloquear — a segurança real está nas regras.
-        setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: displayName, totalPoints: 0, role: 'user' })
-        setNeedsVerification(false)
+      } else {
+        setUser(null)
       }
       setLoading(false)
     })
@@ -66,7 +54,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin: user?.role === 'admin', needsVerification }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin: user?.role === 'admin' }}>
       {children}
     </AuthContext.Provider>
   )

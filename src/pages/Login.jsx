@@ -4,10 +4,10 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
-  sendEmailVerification,
   updateProfile,
 } from 'firebase/auth'
-import { auth } from '../firebase'
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { auth, db } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 import { setPendingName } from '../authPending'
 import PrizeImg from '../components/PrizeImg'
@@ -88,9 +88,15 @@ export default function Login() {
       setPendingName(name.trim())
       const cred = await createUserWithEmailAndPassword(auth, email, password)
       await updateProfile(cred.user, { displayName: name.trim() })
-      // Envia email de verificação. O perfil/apostas só ficam ativos após
-      // confirmar (gate no frontend + as regras exigem email verificado).
-      await sendEmailVerification(cred.user)
+      // Escreve o documento de forma autoritária com o nome correto — não
+      // depende do timing do onAuthStateChanged.
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        name: name.trim(),
+        email: cred.user.email,
+        totalPoints: 0,
+        role: 'user',
+        createdAt: serverTimestamp(),
+      }, { merge: true })
     } catch (err) {
       setError(getErrorMsg(err.code))
       setLoading(false)
