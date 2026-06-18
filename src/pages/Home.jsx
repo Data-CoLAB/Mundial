@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, orderBy, doc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 import Navbar from '../components/Navbar'
@@ -109,6 +109,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('geral')
   const [showWelcome, setShowWelcome] = useState(!localStorage.getItem('databets_welcomed'))
+  const [lateWindowUntil, setLateWindowUntil] = useState(null)
+  const [nowTick, setNowTick] = useState(Date.now())
 
   const dismissWelcome = () => {
     localStorage.setItem('databets_welcomed', '1')
@@ -132,6 +134,25 @@ export default function Home() {
       setUserBets(bets)
     })
   }, [user])
+
+  // Janela de recuperação aberta pelo admin para este utilizador
+  useEffect(() => {
+    if (!user) return
+    return onSnapshot(doc(db, 'lateBetWindows', user.uid), snap => {
+      setLateWindowUntil(snap.exists() ? (snap.data().openUntil?.toDate?.() ?? null) : null)
+    })
+  }, [user])
+
+  // Re-avalia quando a janela expirar (sem polling contínuo)
+  useEffect(() => {
+    if (!lateWindowUntil) return
+    const ms = lateWindowUntil.getTime() - Date.now()
+    if (ms <= 0) return
+    const t = setTimeout(() => setNowTick(Date.now()), ms)
+    return () => clearTimeout(t)
+  }, [lateWindowUntil])
+
+  const lateWindowOpen = !!lateWindowUntil && lateWindowUntil.getTime() > nowTick
 
   const globalMarkets = markets.filter(m => m.category === 'global')
   const gameGroups = markets
@@ -192,6 +213,18 @@ export default function Home() {
         {/* Welcome banner */}
         {showWelcome && <WelcomeBanner onDismiss={dismissWelcome} />}
 
+        {/* Janela de recuperação */}
+        {lateWindowOpen && (
+          <div className="card p-4 border border-emerald-300 bg-emerald-50">
+            <p className="text-sm font-bold text-emerald-800">⏳ Janela de recuperação aberta</p>
+            <p className="text-xs text-emerald-700 mt-1 leading-relaxed">
+              O admin reabriu apostas para ti até{' '}
+              <strong>{lateWindowUntil.toLocaleString('pt-PT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</strong>.
+              Podes apostar nas perguntas que ainda não foram resolvidas e onde ainda não apostaste. Apostas já feitas não mudam.
+            </p>
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="flex gap-1 bg-[#F4F6FB] border border-[#E2E7F2] p-1.5 rounded-2xl">
           <button
@@ -229,7 +262,7 @@ export default function Home() {
               <div className="text-center py-10 text-slate-500 text-sm">Sem mercados globais ainda.</div>
             )}
             {globalMarkets.filter(m => m.section !== 'diversao').map(m => (
-              <MarketCard key={m.id} market={m} userBet={userBets[m.id]} onBetPlaced={() => {}} />
+              <MarketCard key={m.id} market={m} userBet={userBets[m.id]} lateBettingOpen={lateWindowOpen} onBetPlaced={() => {}} />
             ))}
             {globalMarkets.some(m => m.section === 'diversao') && (
               <>
@@ -239,7 +272,7 @@ export default function Home() {
                   <div className="flex-1 h-px bg-[#E2E7F2]" />
                 </div>
                 {globalMarkets.filter(m => m.section === 'diversao').map(m => (
-                  <MarketCard key={m.id} market={m} userBet={userBets[m.id]} onBetPlaced={() => {}} />
+                  <MarketCard key={m.id} market={m} userBet={userBets[m.id]} lateBettingOpen={lateWindowOpen} onBetPlaced={() => {}} />
                 ))}
               </>
             )}
@@ -269,7 +302,7 @@ export default function Home() {
                 </div>
                 <div className="space-y-3">
                   {group.markets.map(m => (
-                    <MarketCard key={m.id} market={m} userBet={userBets[m.id]} onBetPlaced={() => {}} />
+                    <MarketCard key={m.id} market={m} userBet={userBets[m.id]} lateBettingOpen={lateWindowOpen} onBetPlaced={() => {}} />
                   ))}
                 </div>
               </section>

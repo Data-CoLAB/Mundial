@@ -16,6 +16,23 @@ service cloud.firestore {
       return market.data.status == 'open' && market.data.closesAt > request.time;
     }
 
+    // Janela de recuperação: admin abriu apostas tardias para este utilizador.
+    function hasLateWindow() {
+      return exists(/databases/$(database)/documents/lateBetWindows/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/lateBetWindows/$(request.auth.uid)).data.openUntil > request.time;
+    }
+
+    // Mercado ainda sem resolução (pode estar 'open' ou 'closed', mas não 'resolved').
+    function marketNotResolved(marketId) {
+      return get(/databases/$(database)/documents/markets/$(marketId)).data.status != 'resolved';
+    }
+
+    // Pode apostar se o mercado está aberto OU se tem janela de recuperação ativa
+    // e o mercado ainda não foi resolvido.
+    function canPlaceBet(marketId) {
+      return isMarketOpen(marketId) || (hasLateWindow() && marketNotResolved(marketId));
+    }
+
     // Users — readable by all authenticated (for leaderboard)
     match /users/{userId} {
       allow read: if isAuthenticated();
@@ -39,11 +56,17 @@ service cloud.firestore {
       allow create: if isAuthenticated()
         && request.resource.data.userId == request.auth.uid
         && betId == request.auth.uid + '_' + request.resource.data.marketId
-        && isMarketOpen(request.resource.data.marketId)
+        && canPlaceBet(request.resource.data.marketId)
         && request.resource.data.placedAt == request.time
         && request.resource.data.keys().hasOnly(['userId', 'marketId', 'optionId', 'placedAt']);
       allow update: if false;
       allow delete: if false;
+    }
+
+    // Janelas de recuperação — admin abre/fecha; utilizador lê a sua para saber se pode apostar tarde
+    match /lateBetWindows/{uid} {
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
+      allow write: if isAdmin();
     }
 
     // Pódio picks — 1 por utilizador, imutável após submissão, fecha 17 Jun 17:00 UTC

@@ -7,7 +7,7 @@ import OptionAvatar from './OptionAvatar'
 
 const archivo = { fontFamily: "'Archivo', sans-serif" }
 
-export default function MarketCard({ market, userBet }) {
+export default function MarketCard({ market, userBet, lateBettingOpen = false }) {
   const { user } = useAuth()
   const [selected, setSelected] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -18,6 +18,9 @@ export default function MarketCard({ market, userBet }) {
   const isExpired = closesAt && now > closesAt
   const isOpen = market.status === 'open' && !isExpired
   const isResolved = market.status === 'resolved'
+  // Janela de recuperação: pode apostar num mercado fechado-mas-não-resolvido
+  const lateBet = lateBettingOpen && !isOpen && !isResolved
+  const canBet = isOpen || lateBet
 
   const winningOption = isResolved
     ? market.options.find(o => o.id === market.winningOptionId)
@@ -83,9 +86,14 @@ export default function MarketCard({ market, userBet }) {
         )}
       </div>
 
-      {/* Options — shown when open and no bet yet */}
-      {isOpen && !userBet && (
+      {/* Options — shown when open (or late window) and no bet yet */}
+      {canBet && !userBet && (
         <div className="space-y-3">
+          {lateBet && (
+            <div className="bg-emerald-50 border border-emerald-300 rounded-2xl px-3 py-2">
+              <p className="text-xs text-emerald-700 font-semibold">⏳ Reaberto para ti — esta pergunta estava fechada mas podes apostar dentro da janela.</p>
+            </div>
+          )}
           <div className={`grid gap-2.5 ${optCols}`}>
             {market.options.map(opt => {
               const isSelected = selected === opt.id
@@ -125,8 +133,8 @@ export default function MarketCard({ market, userBet }) {
         </div>
       )}
 
-      {/* Closed with no bet */}
-      {!isOpen && !isResolved && !userBet && (
+      {/* Closed with no bet (and no late window) */}
+      {!canBet && !isResolved && !userBet && (
         <p className="text-xs text-[#A89E88] text-center py-1">Encerrado sem aposta</p>
       )}
 

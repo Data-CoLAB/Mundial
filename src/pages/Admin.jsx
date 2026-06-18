@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, orderBy, query, getDocs, getDoc, serverTimestamp, Timestamp } from 'firebase/firestore'
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, orderBy, query, getDocs, getDoc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore'
 import { db, auth } from '../firebase'
 import Navbar from '../components/Navbar'
 import { ROUNDS, ROUND_LABELS, POINTS_BY_ROUND } from '../data/podiumTiers'
@@ -132,10 +132,35 @@ export default function Admin() {
   const [resolvingPodium, setResolvingPodium] = useState(false)
   const [showPodiumPreview, setShowPodiumPreview] = useState(false)
 
+  // Apostas tardias (janelas de recuperação)
+  const [lateWindows, setLateWindows] = useState({}) // uid → { openUntil, openedAt }
+  const [lateUsers, setLateUsers] = useState([])     // [{ id, name, email }]
+  const [lateFilter, setLateFilter] = useState('')
+  const [lateBusy, setLateBusy] = useState({})       // uid → bool
+
   useEffect(() => {
     const q = query(collection(db, 'markets'), orderBy('createdAt', 'desc'))
     return onSnapshot(q, snap => setMarkets(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
   }, [])
+
+  useEffect(() => {
+    return onSnapshot(collection(db, 'lateBetWindows'), snap => {
+      const m = {}
+      snap.docs.forEach(d => { m[d.id] = d.data() })
+      setLateWindows(m)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (tab !== 'tardias') return
+    getDocs(collection(db, 'users')).then(snap => {
+      setLateUsers(
+        snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+      )
+    })
+  }, [tab])
 
   useEffect(() => {
     if (tab !== 'podio') return
@@ -303,8 +328,45 @@ export default function Admin() {
     }
   }
 
+  const lateWindowActive = (uid) => {
+    const w = lateWindows[uid]
+    const until = w?.openUntil?.toDate?.()
+    return until ? until > new Date() : false
+  }
+
+  const openLateWindow = async (uid, hours) => {
+    setLateBusy(b => ({ ...b, [uid]: true }))
+    try {
+      const until = new Date(Date.now() + hours * 3600 * 1000)
+      await setDoc(doc(db, 'lateBetWindows', uid), {
+        openUntil: Timestamp.fromDate(until),
+        openedBy: auth.currentUser.uid,
+        openedAt: serverTimestamp(),
+      })
+      notify(`⏳ Janela aberta até ${until.toLocaleString('pt-PT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`)
+    } catch (err) {
+      notify('Erro: ' + err.message)
+    } finally {
+      setLateBusy(b => ({ ...b, [uid]: false }))
+    }
+  }
+
+  const closeLateWindow = async (uid) => {
+    setLateBusy(b => ({ ...b, [uid]: true }))
+    try {
+      await deleteDoc(doc(db, 'lateBetWindows', uid))
+      notify('Janela fechada')
+    } catch (err) {
+      notify('Erro: ' + err.message)
+    } finally {
+      setLateBusy(b => ({ ...b, [uid]: false }))
+    }
+  }
+
   const activeMarkets = markets.filter(m => m.status !== 'resolved')
   const resolvedMarkets = markets.filter(m => m.status === 'resolved')
+  const unresolvedCount = activeMarkets.length
+  const activeWindowsCount = Object.keys(lateWindows).filter(uid => lateWindowActive(uid)).length
 
   return (
     <div className="min-h-screen bg-[#EEF1F8]">
@@ -317,7 +379,7 @@ export default function Admin() {
 
         {/* Tabs */}
         <div className="flex gap-2 flex-wrap">
-          {[['markets', 'Mercados'], ['create', 'Criar Mercado'], ['podio', '🔮 Oracle']].map(([t, label]) => (
+          {[['markets', 'Mercados'], ['create', 'Criar Mercado'], ['tardias', '⏳ Tardias'], ['podio', '🔮 Oracle']].map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${tab === t ? 'bg-gold text-black' : 'bg-[#FFFFFF] text-slate-500 hover:text-slate-900'}`}>
               {label}
@@ -555,6 +617,104 @@ export default function Admin() {
                 )}
               </>
             )}
+          </div>
+        )}
+
+        {/* APOSTAS TARDIAS TAB */}
+        {tab === 'tardias' && (
+          <div className="space-y-4">
+            {/* Aviso de justiça */}
+            <div className="card p-4 border border-amber-300 bg-amber-50">
+              <p className="text-sm font-bold text-amber-800">⚠️ Antes de abrir uma janela</p>
+              <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                Resolve primeiro os mercados de jogos <strong>já decididos</strong>. A janela só deixa
+                apostar em perguntas <strong>ainda não resolvidas</strong> — se um jogo já aconteceu mas
+                ainda não o resolveste, o utilizador podia apostar sabendo o resultado.
+              </p>
+              <p className="text-xs text-amber-700 mt-2">
+                Neste momento há <strong>{unresolvedCount}</strong> mercado(s) por resolver.
+              </p>
+            </div>
+
+            {/* Resumo + filtro */}
+            <div className="card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-slate-500">Janelas ativas</p>
+                  <p className="text-2xl font-black text-gold">{activeWindowsCount}</p>
+                </div>
+                <p className="text-xs text-slate-500 text-right max-w-[55%] leading-relaxed">
+                  Abre uma janela temporária para quem não conseguiu apostar a tempo.
+                  Apostas já feitas não mudam; só pode apostar em perguntas novas.
+                </p>
+              </div>
+              <input
+                value={lateFilter}
+                onChange={e => setLateFilter(e.target.value)}
+                placeholder="Procurar utilizador..."
+                className="w-full bg-[#F4F6FB] border border-[#E2E7F2] rounded-xl px-3 py-2.5 text-slate-900 text-sm focus:outline-none focus:border-gold"
+              />
+            </div>
+
+            {/* Lista de utilizadores */}
+            <div className="card overflow-hidden divide-y divide-[#E2E7F2]/60">
+              {lateUsers.length === 0 && (
+                <p className="text-sm text-slate-500 text-center py-6">A carregar utilizadores...</p>
+              )}
+              {lateUsers
+                .filter(u => {
+                  const q = lateFilter.trim().toLowerCase()
+                  if (!q) return true
+                  return (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q)
+                })
+                .map(u => {
+                  const active = lateWindowActive(u.id)
+                  const until = lateWindows[u.id]?.openUntil?.toDate?.()
+                  const busy = lateBusy[u.id]
+                  return (
+                    <div key={u.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 truncate">{u.name || '(sem nome)'}</p>
+                        {active && until ? (
+                          <p className="text-xs text-emerald-600 font-semibold mt-0.5">
+                            ⏳ Aberta até {until.toLocaleString('pt-PT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-slate-400 truncate mt-0.5">{u.email}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-1.5 shrink-0">
+                        {active ? (
+                          <button
+                            onClick={() => closeLateWindow(u.id)}
+                            disabled={busy}
+                            className="text-xs py-1.5 px-3 rounded-xl border border-red-500/40 text-red-600 hover:bg-red-500/10 transition-colors font-semibold disabled:opacity-50"
+                          >
+                            {busy ? '...' : 'Fechar'}
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => openLateWindow(u.id, 2)}
+                              disabled={busy}
+                              className="text-xs py-1.5 px-3 rounded-xl border border-[#C8D0E4] text-slate-600 hover:text-slate-900 hover:border-gold transition-colors font-semibold disabled:opacity-50"
+                            >
+                              {busy ? '...' : '+2h'}
+                            </button>
+                            <button
+                              onClick={() => openLateWindow(u.id, 24)}
+                              disabled={busy}
+                              className="text-xs py-1.5 px-3 rounded-xl border border-[#C8D0E4] text-slate-600 hover:text-slate-900 hover:border-gold transition-colors font-semibold disabled:opacity-50"
+                            >
+                              {busy ? '...' : '+24h'}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
           </div>
         )}
 
