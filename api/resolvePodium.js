@@ -26,21 +26,30 @@ export default async function handler(req, res) {
     }
 
     const picksSnap = await db.collection('podiumPicks').get()
-    const batch = db.batch()
-    let count = 0
 
+    // Pré-calcula os pontos de cada pick e salta utilizadores que já não existem
+    // (apagados/órfãos) — senão o batch.update rebenta com NOT_FOUND.
+    const toCredit = []
     picksSnap.docs.forEach((pickDoc) => {
       const pick = pickDoc.data()
       const pts =
         (POINTS[results[pick.tier1]] ?? 0) +
         (POINTS[results[pick.tier2]] ?? 0) +
         (POINTS[results[pick.tier3]] ?? 0)
-      if (pts > 0) {
-        batch.update(db.doc(`users/${pick.userId}`), {
-          totalPoints: FieldValue.increment(pts),
-        })
-      }
-      count++
+      if (pts > 0) toCredit.push({ uid: pick.userId, pts })
+    })
+    const userRefs = toCredit.map((c) => db.doc(`users/${c.uid}`))
+    const userSnaps = userRefs.length ? await db.getAll(...userRefs) : []
+    const existing = new Set(userSnaps.filter((s) => s.exists).map((s) => s.id))
+
+    const batch = db.batch()
+    let credited = 0
+    toCredit.forEach(({ uid, pts }) => {
+      if (!existing.has(uid)) return
+      batch.update(db.doc(`users/${uid}`), {
+        totalPoints: FieldValue.increment(pts),
+      })
+      credited++
     })
 
     batch.set(configRef, {
@@ -50,7 +59,7 @@ export default async function handler(req, res) {
     })
     await batch.commit()
 
-    return res.status(200).json({ success: true, picksResolved: count })
+    return res.status(200).json({ success: true, picksResolved: picksSnap.size, credited })
   } catch (err) {
     return res.status(err.status || 500).json({ error: err.message || 'Erro interno' })
   }

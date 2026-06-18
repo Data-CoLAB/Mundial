@@ -31,11 +31,21 @@ export default async function handler(req, res) {
       .where('optionId', '==', winningOptionId)
       .get()
 
+    // Salta apostas de utilizadores que já não existem (apagados/órfãos) — senão
+    // o batch.update rebenta com NOT_FOUND e a resolução falha toda.
+    const userRefs = betsSnap.docs.map((d) => db.doc(`users/${d.data().userId}`))
+    const userSnaps = userRefs.length ? await db.getAll(...userRefs) : []
+    const existing = new Set(userSnaps.filter((s) => s.exists).map((s) => s.id))
+
     const batch = db.batch()
+    let credited = 0
     betsSnap.docs.forEach((betDoc) => {
-      batch.update(db.doc(`users/${betDoc.data().userId}`), {
+      const uid = betDoc.data().userId
+      if (!existing.has(uid)) return
+      batch.update(db.doc(`users/${uid}`), {
         totalPoints: FieldValue.increment(points),
       })
+      credited++
     })
     batch.update(marketRef, {
       status: 'resolved',
@@ -44,7 +54,7 @@ export default async function handler(req, res) {
     })
     await batch.commit()
 
-    return res.status(200).json({ success: true, winnersCount: betsSnap.size })
+    return res.status(200).json({ success: true, winnersCount: credited, skipped: betsSnap.size - credited })
   } catch (err) {
     return res.status(err.status || 500).json({ error: err.message || 'Erro interno' })
   }
