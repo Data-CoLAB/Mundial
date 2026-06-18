@@ -33,6 +33,12 @@ service cloud.firestore {
       return isMarketOpen(marketId) || (hasLateWindow() && marketNotResolved(marketId));
     }
 
+    // Pódio (Oracle) ainda não resolvido (config/podium.resolved != true).
+    function podiumNotResolved() {
+      return !exists(/databases/$(database)/documents/config/podium) ||
+        get(/databases/$(database)/documents/config/podium).data.resolved != true;
+    }
+
     // Users — readable by all authenticated (for leaderboard)
     match /users/{userId} {
       allow read: if isAuthenticated();
@@ -74,7 +80,8 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
       allow create: if isAuthenticated()
         && request.auth.uid == uid
-        && request.time < timestamp.date(2026, 6, 17) + duration.value(17, 'h')
+        && (request.time < timestamp.date(2026, 6, 17) + duration.value(17, 'h') || hasLateWindow())
+        && podiumNotResolved()
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.placedAt == request.time
         && request.resource.data.keys().hasOnly(['userId', 'tier1', 'tier2', 'tier3', 'placedAt'])

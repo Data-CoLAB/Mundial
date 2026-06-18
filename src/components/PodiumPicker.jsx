@@ -30,7 +30,7 @@ function useCountdown(target) {
   return { label, expired }
 }
 
-export default function PodiumPicker() {
+export default function PodiumPicker({ lateBettingOpen = false }) {
   const { user } = useAuth()
   const [picks, setPicks] = useState({ tier1: null, tier2: null, tier3: null })
   const [savedPick, setSavedPick] = useState(null)
@@ -52,8 +52,11 @@ export default function PodiumPicker() {
     })
   }, [user])
 
+  // Picking aberto se ainda não fechou OU se há janela de recuperação ativa (e pódio não resolvido)
+  const pickingOpen = !isClosed || (lateBettingOpen && podiumConfig?.resolved !== true)
+
   const select = (tierId, team) => {
-    if (savedPick || isClosed) return
+    if (savedPick || !pickingOpen) return
     setPicks(p => ({ ...p, [tierId]: team }))
   }
 
@@ -203,8 +206,10 @@ export default function PodiumPicker() {
         <div className="p-5">
           <p style={archivo} className="text-[17px] font-extrabold">🔮 Oracle — escolhe 1 seleção por tier</p>
           <p className="mt-1 text-[13px] text-[#C9D2E3]">Quanto mais longe cada seleção chegar, mais pontos extra ganhas no fim.</p>
-          {isClosed ? (
+          {isClosed && !pickingOpen ? (
             <span className="mt-3 inline-block rounded-full bg-[#FCE5E3] px-3 py-1 text-xs font-bold text-[#C8281F]">Apostas encerradas</span>
+          ) : isClosed && pickingOpen ? (
+            <span className="mt-3 inline-block rounded-full bg-[#D8F3E6] px-3 py-1 text-xs font-bold text-[#0E7A4F]">⏳ Reaberto para ti — janela de recuperação</span>
           ) : (
             <div className="mt-3 inline-flex items-center gap-2">
               <span className="text-[12px] text-[#9FB0C9]">Fecha 17 Jun · 18h00</span>
@@ -238,7 +243,7 @@ export default function PodiumPicker() {
                   <button
                     key={team}
                     onClick={() => select(tier.id, team)}
-                    disabled={isClosed}
+                    disabled={!pickingOpen}
                     style={boxStyle(isSel)}
                     className="relative flex items-center gap-2.5 rounded-2xl px-3.5 py-3 text-left text-[13.5px] font-bold leading-tight transition-transform duration-150 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                   >
@@ -262,7 +267,7 @@ export default function PodiumPicker() {
       {/* Submit */}
       <button
         onClick={submit}
-        disabled={!allPicked || submitting || isClosed}
+        disabled={!allPicked || submitting || !pickingOpen}
         style={archivo}
         className="w-full rounded-2xl bg-[#0E1B33] py-3.5 text-base font-extrabold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
       >

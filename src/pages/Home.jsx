@@ -281,7 +281,7 @@ export default function Home() {
 
         {activeTab === 'podio' && (
           <section>
-            <PodiumPicker />
+            <PodiumPicker lateBettingOpen={lateWindowOpen} />
           </section>
         )}
 
