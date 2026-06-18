@@ -1,5 +1,5 @@
 // Fase de Grupos · Mundial 2026
-// Resultados atualizados até 15 Jun 2026 (fonte: CBS Sports / NBC Sports)
+// Resultados atualizados até 17 Jun 2026 — jornada 1 completa (fonte: Wikipedia / ESPN / FIFA)
 
 export const FLAG = {
   'México': 'mx',
@@ -145,31 +145,31 @@ export const groups = [
   {
     id: 'I',
     matches: [
-      { jornada: 1, home: 'França', away: 'Iraque', date: '2026-06-16', homeScore: null, awayScore: null },
-      { jornada: 1, home: 'Senegal', away: 'Noruega', date: '2026-06-16', homeScore: null, awayScore: null },
-      { jornada: 2, home: 'França', away: 'Senegal', date: '2026-06-22', homeScore: null, awayScore: null },
-      { jornada: 2, home: 'Iraque', away: 'Noruega', date: '2026-06-22', homeScore: null, awayScore: null },
-      { jornada: 3, home: 'França', away: 'Noruega', date: '2026-06-26', homeScore: null, awayScore: null },
-      { jornada: 3, home: 'Iraque', away: 'Senegal', date: '2026-06-26', homeScore: null, awayScore: null },
+      { jornada: 1, home: 'França', away: 'Senegal', date: '2026-06-16', homeScore: 3, awayScore: 1 },
+      { jornada: 1, home: 'Iraque', away: 'Noruega', date: '2026-06-16', homeScore: 1, awayScore: 4 },
+      { jornada: 2, home: 'França', away: 'Iraque', date: '2026-06-22', homeScore: null, awayScore: null },
+      { jornada: 2, home: 'Noruega', away: 'Senegal', date: '2026-06-22', homeScore: null, awayScore: null },
+      { jornada: 3, home: 'Noruega', away: 'França', date: '2026-06-26', homeScore: null, awayScore: null },
+      { jornada: 3, home: 'Senegal', away: 'Iraque', date: '2026-06-26', homeScore: null, awayScore: null },
     ],
   },
   {
     id: 'J',
     matches: [
-      { jornada: 1, home: 'Argentina', away: 'Jordânia', date: '2026-06-16', homeScore: null, awayScore: null },
-      { jornada: 1, home: 'Argélia', away: 'Áustria', date: '2026-06-16', homeScore: null, awayScore: null },
-      { jornada: 2, home: 'Argentina', away: 'Argélia', date: '2026-06-22', homeScore: null, awayScore: null },
-      { jornada: 2, home: 'Jordânia', away: 'Áustria', date: '2026-06-22', homeScore: null, awayScore: null },
-      { jornada: 3, home: 'Argentina', away: 'Áustria', date: '2026-06-26', homeScore: null, awayScore: null },
-      { jornada: 3, home: 'Jordânia', away: 'Argélia', date: '2026-06-26', homeScore: null, awayScore: null },
+      { jornada: 1, home: 'Argentina', away: 'Argélia', date: '2026-06-16', homeScore: 3, awayScore: 0 },
+      { jornada: 1, home: 'Áustria', away: 'Jordânia', date: '2026-06-16', homeScore: 3, awayScore: 1 },
+      { jornada: 2, home: 'Argentina', away: 'Áustria', date: '2026-06-22', homeScore: null, awayScore: null },
+      { jornada: 2, home: 'Jordânia', away: 'Argélia', date: '2026-06-22', homeScore: null, awayScore: null },
+      { jornada: 3, home: 'Argélia', away: 'Áustria', date: '2026-06-27', homeScore: null, awayScore: null },
+      { jornada: 3, home: 'Jordânia', away: 'Argentina', date: '2026-06-27', homeScore: null, awayScore: null },
     ],
   },
   {
     id: 'K',
     isPortugal: true,
     matches: [
-      { jornada: 1, home: 'Portugal', away: 'Congo RD', date: '2026-06-17', homeScore: null, awayScore: null },
-      { jornada: 1, home: 'Colômbia', away: 'Uzbequistão', date: '2026-06-17', homeScore: null, awayScore: null },
+      { jornada: 1, home: 'Portugal', away: 'Congo RD', date: '2026-06-17', homeScore: 1, awayScore: 1 },
+      { jornada: 1, home: 'Colômbia', away: 'Uzbequistão', date: '2026-06-17', homeScore: 3, awayScore: 1 },
       { jornada: 2, home: 'Portugal', away: 'Uzbequistão', date: '2026-06-23', homeScore: null, awayScore: null },
       { jornada: 2, home: 'Colômbia', away: 'Congo RD', date: '2026-06-23', homeScore: null, awayScore: null },
       { jornada: 3, home: 'Colômbia', away: 'Portugal', date: '2026-06-27', homeScore: null, awayScore: null },
@@ -179,8 +179,8 @@ export const groups = [
   {
     id: 'L',
     matches: [
-      { jornada: 1, home: 'Inglaterra', away: 'Croácia', date: '2026-06-17', homeScore: null, awayScore: null },
-      { jornada: 1, home: 'Gana', away: 'Panamá', date: '2026-06-17', homeScore: null, awayScore: null },
+      { jornada: 1, home: 'Inglaterra', away: 'Croácia', date: '2026-06-17', homeScore: 4, awayScore: 2 },
+      { jornada: 1, home: 'Gana', away: 'Panamá', date: '2026-06-17', homeScore: 1, awayScore: 0 },
       { jornada: 2, home: 'Inglaterra', away: 'Gana', date: '2026-06-23', homeScore: null, awayScore: null },
       { jornada: 2, home: 'Croácia', away: 'Panamá', date: '2026-06-23', homeScore: null, awayScore: null },
       { jornada: 3, home: 'Inglaterra', away: 'Panamá', date: '2026-06-27', homeScore: null, awayScore: null },
