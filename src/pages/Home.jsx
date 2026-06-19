@@ -111,6 +111,7 @@ export default function Home() {
   const [showWelcome, setShowWelcome] = useState(!localStorage.getItem('databets_welcomed'))
   const [lateWindowUntil, setLateWindowUntil] = useState(null)
   const [nowTick, setNowTick] = useState(Date.now())
+  const [openGames, setOpenGames] = useState({})
 
   const dismissWelcome = () => {
     localStorage.setItem('databets_welcomed', '1')
@@ -163,7 +164,9 @@ export default function Home() {
       acc[key].markets.push(m)
       return acc
     }, {})
-  const sortedGames = Object.entries(gameGroups).sort((a, b) => a[1].order - b[1].order)
+  // Mais recente (maior gameOrder) no topo
+  const sortedGames = Object.entries(gameGroups).sort((a, b) => b[1].order - a[1].order)
+  const topGameLabel = sortedGames[0]?.[0]
 
   const pendingBets = markets.filter(m => m.status === 'open' && !userBets[m.id]).length
 
@@ -286,25 +289,40 @@ export default function Home() {
         )}
 
         {activeTab === 'portugal' && (
-          <div className="space-y-8">
+          <div className="space-y-4">
             {sortedGames.length === 0 && (
               <div className="text-center py-10 text-slate-500 text-sm">Sem jogos de Portugal ainda.</div>
             )}
             {sortedGames.map(([gameLabel, group]) => {
               const opponent = gameLabel.replace(/^\s*Portugal\s+vs\s+/i, '').trim()
               const hasOpponent = opponent && opponent !== gameLabel
+              const open = gameLabel in openGames ? openGames[gameLabel] : gameLabel === topGameLabel
+              const total = group.markets.length
+              const resolved = group.markets.filter(m => m.status === 'resolved').length
+              const summary = resolved === total ? `${total} mercados · resolvido` : `${total} mercados${resolved ? ` · ${resolved} resolvidos` : ''}`
               return (
-              <section key={gameLabel}>
-                <div className="flex items-center gap-2 mb-3">
+              <section key={gameLabel} className="card overflow-hidden">
+                <button
+                  onClick={() => setOpenGames(o => ({ ...o, [gameLabel]: !open }))}
+                  className="w-full flex items-center gap-2.5 px-4 py-3.5 text-left hover:bg-[#F4F6FB] transition-colors"
+                >
                   <Flag team="Portugal" size={24} />
-                  <h2 className="text-sm font-bold text-slate-900">{gameLabel}</h2>
                   {hasOpponent && <Flag team={opponent} size={24} />}
-                </div>
-                <div className="space-y-3">
-                  {group.markets.map(m => (
-                    <MarketCard key={m.id} market={m} userBet={userBets[m.id]} lateBettingOpen={lateWindowOpen} onBetPlaced={() => {}} />
-                  ))}
-                </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-900 truncate">{gameLabel}</p>
+                    <p className="text-xs text-slate-500">{summary}</p>
+                  </div>
+                  <svg className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                {open && (
+                  <div className="px-4 pb-4 pt-3 space-y-3 border-t border-[#E2E7F2]/60">
+                    {group.markets.map(m => (
+                      <MarketCard key={m.id} market={m} userBet={userBets[m.id]} lateBettingOpen={lateWindowOpen} onBetPlaced={() => {}} />
+                    ))}
+                  </div>
+                )}
               </section>
               )
             })}

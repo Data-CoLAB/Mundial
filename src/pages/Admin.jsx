@@ -100,6 +100,24 @@ const SEED_MARKETS = [
       { id: '61_90', label: '61 a 90 min' }, { id: 'sem', label: 'Sem golo de PT' }] },
 ]
 
+// Template de um jogo de Portugal — mesmas perguntas, opções e pontos para qualquer jogo.
+const PT_GAME_MARKETS = [
+  { title: 'Resultado final', points: 40,
+    options: [{ id: 'por', label: 'Vitória Portugal' }, { id: 'emp', label: 'Empate' }, { id: 'der', label: 'Derrota Portugal' }] },
+  { title: 'Resultado ao intervalo', points: 30,
+    options: [{ id: 'por', label: 'Vitória Portugal' }, { id: 'emp', label: 'Empate' }, { id: 'der', label: 'Derrota Portugal' }] },
+  { title: 'Mais ou menos de 2.5 golos?', points: 25,
+    options: [{ id: 'mais', label: 'Mais de 2.5' }, { id: 'menos', label: 'Menos ou igual a 2.5' }] },
+  { title: 'Jogador a marcar', points: 50, options: squad('jm') },
+  { title: 'Portugal marca em primeiro?', points: 25,
+    options: [{ id: 'sim', label: 'Sim' }, { id: 'nao', label: 'Não' }] },
+  { title: 'Haverá cartão vermelho?', points: 25,
+    options: [{ id: 'sim', label: 'Sim' }, { id: 'nao', label: 'Não' }] },
+  { title: 'Minuto do 1º golo Portugal', points: 40,
+    options: [{ id: '1_30', label: '1 a 30 min' }, { id: '31_60', label: '31 a 60 min' },
+      { id: '61_90', label: '61 a 90 min' }, { id: 'sem', label: 'Sem golo de PT' }] },
+]
+
 const EMPTY_MARKET = {
   title: '',
   category: 'global',
@@ -122,6 +140,7 @@ export default function Admin() {
   const [newCloseAt, setNewCloseAt] = useState({})
   const [tab, setTab] = useState('markets')
   const [feedback, setFeedback] = useState('')
+  const [ptGame, setPtGame] = useState({ label: 'Portugal vs Uzbequistão', closesAt: '2026-06-23T18:00' })
 
   // Pódio state
   const [podiumPicks, setPodiumPicks] = useState([])
@@ -207,6 +226,44 @@ export default function Admin() {
         })
       }
       notify(`✅ ${SEED_MARKETS.length} mercados criados!`)
+    } catch (err) {
+      notify('Erro: ' + err.message)
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const createPortugalGame = async () => {
+    const label = ptGame.label.trim()
+    if (!label) { notify('Indica o nome do jogo'); return }
+    if (!ptGame.closesAt) { notify('Indica a hora de fecho'); return }
+    const closeDate = new Date(ptGame.closesAt)
+    const existing = markets.filter(m => m.category === 'portugal_game')
+    if (existing.some(m => m.gameLabel === label)) {
+      notify(`Já existem mercados para "${label}"`); return
+    }
+    const order = Math.max(0, ...existing.map(m => m.gameOrder ?? 0)) + 1
+    const when = closeDate.toLocaleString('pt-PT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    if (!window.confirm(`Criar ${PT_GAME_MARKETS.length} mercados para "${label}" (jogo ${order}) que fecham em ${when}?`)) return
+    setCreating(true)
+    try {
+      for (const m of PT_GAME_MARKETS) {
+        await addDoc(collection(db, 'markets'), {
+          title: m.title,
+          category: 'portugal_game',
+          gameLabel: label,
+          gameOrder: order,
+          points: m.points,
+          closesAt: Timestamp.fromDate(closeDate),
+          status: 'open',
+          winningOptionId: null,
+          options: m.options,
+          section: null,
+          description: null,
+          createdAt: serverTimestamp(),
+        })
+      }
+      notify(`✅ ${PT_GAME_MARKETS.length} mercados criados para ${label}`)
     } catch (err) {
       notify('Erro: ' + err.message)
     } finally {
@@ -389,6 +446,28 @@ export default function Admin() {
 
         {/* CREATE TAB */}
         {tab === 'create' && (
+          <div className="space-y-6">
+          {/* Atalho: abrir um jogo de Portugal (7 mercados de uma vez) */}
+          <div className="card p-5 space-y-3 border border-pt/30">
+            <div>
+              <p className="text-sm font-bold text-slate-900">🇵🇹 Abrir jogo de Portugal</p>
+              <p className="text-xs text-slate-500 mt-0.5">Cria os {PT_GAME_MARKETS.length} mercados padrão (mesmas perguntas, opções e pontos do 1.º jogo) de uma só vez.</p>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5">Nome do jogo</label>
+              <input value={ptGame.label} onChange={e => setPtGame(g => ({ ...g, label: e.target.value }))} placeholder="Portugal vs Uzbequistão"
+                className="w-full bg-[#F4F6FB] border border-[#E2E7F2] rounded-xl px-3 py-2.5 text-slate-900 text-sm focus:outline-none focus:border-gold" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5">Fecha em (pontapé de saída)</label>
+              <input type="datetime-local" value={ptGame.closesAt} onChange={e => setPtGame(g => ({ ...g, closesAt: e.target.value }))}
+                className="w-full bg-[#F4F6FB] border border-[#E2E7F2] rounded-xl px-3 py-2.5 text-slate-900 text-sm focus:outline-none focus:border-gold" />
+            </div>
+            <button type="button" onClick={createPortugalGame} disabled={creating} className="btn-primary w-full">
+              {creating ? 'A criar...' : `Criar mercados do jogo (${PT_GAME_MARKETS.length})`}
+            </button>
+          </div>
+
           <form onSubmit={handleCreate} className="card p-5 space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1.5">Título</label>
@@ -462,6 +541,7 @@ export default function Admin() {
               {creating ? 'A criar...' : 'Criar Mercado'}
             </button>
           </form>
+          </div>
         )}
 
         {/* PÓDIO TAB */}
