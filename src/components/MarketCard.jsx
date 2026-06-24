@@ -22,15 +22,17 @@ export default function MarketCard({ market, userBet, lateBettingOpen = false })
   const lateBet = lateBettingOpen && !isOpen && !isResolved
   const canBet = isOpen || lateBet
 
-  const winningOption = isResolved
-    ? market.options.find(o => o.id === market.winningOptionId)
-    : null
+  // Pode haver várias opções vencedoras (ex: vários marcadores). Retrocompat com winningOptionId único.
+  const winningIds = isResolved
+    ? (market.winningOptionIds ?? (market.winningOptionId ? [market.winningOptionId] : []))
+    : []
+  const winningOptions = market.options.filter(o => winningIds.includes(o.id))
 
   const userOption = userBet
     ? market.options.find(o => o.id === userBet.optionId)
     : null
 
-  const userWon = isResolved && userBet && userBet.optionId === market.winningOptionId
+  const userWon = isResolved && userBet && winningIds.includes(userBet.optionId)
 
   const handleBet = async () => {
     if (!selected) return
@@ -155,12 +157,16 @@ export default function MarketCard({ market, userBet, lateBettingOpen = false })
       {/* Resolved — show result + user outcome */}
       {isResolved && (
         <div className="space-y-2">
-          {winningOption && (
+          {winningOptions.length > 0 && (
             <div className="bg-[#FFF3D6] border border-[#F0DCA0] rounded-2xl px-3.5 py-2.5">
-              <p className="text-xs text-[#8C8474] mb-0.5">Resultado</p>
-              <div className="flex items-center gap-2">
-                <OptionAvatar label={winningOption.label} />
-                <p className="text-sm font-extrabold text-[#9A6B00]">{winningOption.label}</p>
+              <p className="text-xs text-[#8C8474] mb-1">{winningOptions.length > 1 ? 'Opções certas' : 'Resultado'}</p>
+              <div className="space-y-1.5">
+                {winningOptions.map(o => (
+                  <div key={o.id} className="flex items-center gap-2">
+                    <OptionAvatar label={o.label} />
+                    <p className="text-sm font-extrabold text-[#9A6B00]">{o.label}</p>
+                  </div>
+                ))}
               </div>
             </div>
           )}

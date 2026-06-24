@@ -133,7 +133,7 @@ export default function Admin() {
   const [form, setForm] = useState(EMPTY_MARKET)
   const [creating, setCreating] = useState(false)
   const [resolving, setResolving] = useState({})
-  const [selectedWinner, setSelectedWinner] = useState({})
+  const [selectedWinners, setSelectedWinners] = useState({})
   const [editingOptions, setEditingOptions] = useState(null)
   const [newOptionLabel, setNewOptionLabel] = useState({})
   const [editingClose, setEditingClose] = useState(null)
@@ -371,12 +371,19 @@ export default function Admin() {
     }
   }
 
+  const toggleWinner = (marketId, optionId) => {
+    setSelectedWinners(w => {
+      const cur = w[marketId] || []
+      return { ...w, [marketId]: cur.includes(optionId) ? cur.filter(id => id !== optionId) : [...cur, optionId] }
+    })
+  }
+
   const resolveMarket = async (market) => {
-    const winId = selectedWinner[market.id]
-    if (!winId) { notify('Seleciona a opção vencedora'); return }
+    const winIds = selectedWinners[market.id] || []
+    if (winIds.length === 0) { notify('Seleciona pelo menos uma opção vencedora'); return }
     setResolving(r => ({ ...r, [market.id]: true }))
     try {
-      const result = await callApi('resolveMarket', { marketId: market.id, winningOptionId: winId })
+      const result = await callApi('resolveMarket', { marketId: market.id, winningOptionIds: winIds })
       notify(`✅ Resolvido! ${result.winnersCount} vencedor(es)`)
     } catch (err) {
       notify('Erro: ' + err.message)
@@ -910,23 +917,31 @@ export default function Admin() {
                       </div>
                     </div>
                   )}
-                  <div className="flex gap-2 flex-1">
-                    <select
-                      value={selectedWinner[market.id] || ''}
-                      onChange={e => setSelectedWinner(w => ({ ...w, [market.id]: e.target.value }))}
-                      className="flex-1 bg-[#F4F6FB] border border-[#E2E7F2] rounded-xl px-2 py-1.5 text-slate-900 text-xs focus:outline-none focus:border-gold"
-                    >
-                      <option value="">Seleciona vencedor...</option>
-                      {market.options.map(o => (
-                        <option key={o.id} value={o.id}>{o.label}</option>
-                      ))}
-                    </select>
+                  <div className="w-full mt-1 bg-[#F4F6FB] rounded-xl p-3 space-y-2">
+                    <p className="text-xs text-slate-500">Marca a(s) opção(ões) correta(s) — podes escolher várias (ex: vários marcadores):</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {market.options.map(o => {
+                        const sel = (selectedWinners[market.id] || []).includes(o.id)
+                        return (
+                          <button
+                            key={o.id}
+                            type="button"
+                            onClick={() => toggleWinner(market.id, o.id)}
+                            className={`text-xs py-1.5 px-2.5 rounded-lg border transition-colors ${sel ? 'border-gold bg-gold/15 text-[#9A6B00] font-bold' : 'border-[#C8D0E4] text-slate-600 hover:text-slate-900'}`}
+                          >
+                            {sel ? '✓ ' : ''}{o.label}
+                          </button>
+                        )
+                      })}
+                    </div>
                     <button
                       onClick={() => resolveMarket(market)}
-                      disabled={resolving[market.id]}
-                      className="btn-primary text-xs py-1.5 px-3"
+                      disabled={resolving[market.id] || !(selectedWinners[market.id]?.length)}
+                      className="btn-primary text-xs py-1.5 px-3 w-full"
                     >
-                      {resolving[market.id] ? '...' : 'Resolver'}
+                      {resolving[market.id]
+                        ? 'A resolver...'
+                        : `Resolver${selectedWinners[market.id]?.length ? ` (${selectedWinners[market.id].length} correta${selectedWinners[market.id].length > 1 ? 's' : ''})` : ''}`}
                     </button>
                   </div>
                 </div>
@@ -938,12 +953,13 @@ export default function Admin() {
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Resolvidos</p>
                 <div className="space-y-2">
                   {resolvedMarkets.map(market => {
-                    const winner = market.options.find(o => o.id === market.winningOptionId)
+                    const winIds = market.winningOptionIds ?? (market.winningOptionId ? [market.winningOptionId] : [])
+                    const winners = market.options.filter(o => winIds.includes(o.id))
                     return (
                       <div key={market.id} className="card p-3 flex items-center justify-between opacity-60">
                         <div>
                           <p className="text-sm text-slate-900 font-semibold">{market.title}</p>
-                          <p className="text-xs text-gold mt-0.5">✓ {winner?.label}</p>
+                          <p className="text-xs text-gold mt-0.5">✓ {winners.map(w => w.label).join(', ') || '—'}</p>
                         </div>
                         <span className="badge-resolved">Resolvido</span>
                       </div>
