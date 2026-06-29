@@ -142,6 +142,10 @@ export default function Admin() {
   const [feedback, setFeedback] = useState('')
   const [ptGame, setPtGame] = useState({ label: 'Portugal vs Uzbequistão', closesAt: '2026-06-23T18:00' })
 
+  // Setas do ranking (base fixada para o leaderboard)
+  const [rankSnap, setRankSnap] = useState(null)
+  const [fixingRank, setFixingRank] = useState(false)
+
   // Pódio state
   const [podiumPicks, setPodiumPicks] = useState([])
   const [podiumUsers, setPodiumUsers] = useState({}) // uid → name
@@ -160,6 +164,10 @@ export default function Admin() {
   useEffect(() => {
     const q = query(collection(db, 'markets'), orderBy('createdAt', 'desc'))
     return onSnapshot(q, snap => setMarkets(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+  }, [])
+
+  useEffect(() => {
+    return onSnapshot(doc(db, 'config', 'rankingSnapshot'), s => setRankSnap(s.exists() ? s.data() : null))
   }, [])
 
   useEffect(() => {
@@ -204,6 +212,19 @@ export default function Admin() {
   }, [tab])
 
   const notify = (msg) => { setFeedback(msg); setTimeout(() => setFeedback(''), 4000) }
+
+  const fixRanking = async () => {
+    if (!window.confirm('Fixar o ranking atual como base? A partir daqui, as setas no leaderboard mostram o movimento de cada pessoa face a este momento.')) return
+    setFixingRank(true)
+    try {
+      const r = await callApi('fixRanking', {})
+      notify(`✅ Ranking fixado (${r.count} jogadores).`)
+    } catch (err) {
+      notify('Erro: ' + err.message)
+    } finally {
+      setFixingRank(false)
+    }
+  }
 
   const handleSeed = async () => {
     if (markets.length > 0 && !window.confirm(`Já existem ${markets.length} mercados. Criar os ${SEED_MARKETS.length} mercados pré-definidos na mesma?`)) return
@@ -808,6 +829,24 @@ export default function Admin() {
         {/* MARKETS TAB */}
         {tab === 'markets' && (
           <div className="space-y-4">
+            {/* Setas do ranking — fixar a base de comparação do leaderboard */}
+            <div className="card p-4 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-bold text-slate-900 text-sm">📌 Setas do ranking</p>
+                <p className="text-xs text-slate-500 leading-snug">
+                  Fixa o ranking atual como base. Depois de resolveres os mercados de um jogo, carrega aqui:
+                  as setas no leaderboard passam a mostrar o movimento desde este momento.
+                  {rankSnap?.fixedAt?.toDate && (
+                    <span className="block text-slate-400 mt-0.5">
+                      Última base: {rankSnap.fixedAt.toDate().toLocaleString('pt-PT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                </p>
+              </div>
+              <button onClick={fixRanking} disabled={fixingRank} className="btn-primary text-sm whitespace-nowrap shrink-0">
+                {fixingRank ? 'A fixar…' : 'Fixar ranking'}
+              </button>
+            </div>
             {activeMarkets.length === 0 && resolvedMarkets.length === 0 && (
               <div className="card p-6 text-center space-y-3">
                 <p className="text-slate-500 text-sm">Sem mercados criados ainda.</p>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 import Navbar from '../components/Navbar'
@@ -8,18 +8,53 @@ import { PRIZES } from '../data/prizes'
 
 const PODIUM = PRIZES
 
+// Seta de variação de posição face à última base fixada pelo admin.
+function Move({ m }) {
+  if (!m) return null
+  if (m.dir === 'up') return (
+    <span title={`Subiu ${m.d} lugar(es)`} className="inline-flex items-center text-green-600 text-xs font-black leading-none">
+      ▲{m.d > 1 && <span className="ml-0.5 text-[10px]">{m.d}</span>}
+    </span>
+  )
+  if (m.dir === 'down') return (
+    <span title={`Desceu ${m.d} lugar(es)`} className="inline-flex items-center text-red-500 text-xs font-black leading-none">
+      ▼{m.d > 1 && <span className="ml-0.5 text-[10px]">{m.d}</span>}
+    </span>
+  )
+  return <span title="Manteve a posição" className="text-slate-400 text-xs font-black leading-none">=</span>
+}
+
 export default function Leaderboard() {
   const { user } = useAuth()
   const [users, setUsers] = useState([])
+  const [snapRanks, setSnapRanks] = useState(null) // { uid: posição } da base fixada
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const q = query(collection(db, 'users'), orderBy('totalPoints', 'desc'))
     return onSnapshot(q, snap => {
-      setUsers(snap.docs.map((d, i) => ({ id: d.id, rank: i + 1, ...d.data() })))
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      // Ordenação determinística igual à do servidor (api/fixRanking): pontos desc, depois id asc.
+      list.sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+      setUsers(list.map((u, i) => ({ ...u, rank: i + 1 })))
       setLoading(false)
     })
   }, [])
+
+  useEffect(() => {
+    return onSnapshot(doc(db, 'config', 'rankingSnapshot'), snap => {
+      setSnapRanks(snap.exists() ? (snap.data().ranks || null) : null)
+    })
+  }, [])
+
+  // Variação de posição face à base fixada (null = sem base ou utilizador novo).
+  const move = (u) => {
+    if (!snapRanks || !(u.id in snapRanks)) return null
+    const prev = snapRanks[u.id]
+    if (prev > u.rank) return { dir: 'up', d: prev - u.rank }
+    if (prev < u.rank) return { dir: 'down', d: u.rank - prev }
+    return { dir: 'same', d: 0 }
+  }
 
   const podium = users.slice(0, 3)
   const rest = users.slice(3)
@@ -77,6 +112,7 @@ export default function Leaderboard() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-black text-slate-900 text-base truncate">{u.name}</p>
+                      <Move m={move(u)} />
                       {u.id === user?.uid && (
                         <span className="text-xs text-gold bg-gold/10 border border-gold/20 px-1.5 py-0.5 rounded-full">Tu</span>
                       )}
@@ -111,9 +147,12 @@ export default function Leaderboard() {
                 className={`flex items-center gap-4 px-4 py-3 ${u.id === user?.uid ? 'bg-gold/5' : ''}`}
               >
                 <span className="text-sm text-slate-500 w-6 text-center font-semibold tabular-nums">{u.rank}</span>
-                <p className={`flex-1 text-sm font-semibold truncate ${u.id === user?.uid ? 'text-gold' : 'text-slate-900'}`}>
-                  {u.name}
-                </p>
+                <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                  <p className={`text-sm font-semibold truncate ${u.id === user?.uid ? 'text-gold' : 'text-slate-900'}`}>
+                    {u.name}
+                  </p>
+                  <Move m={move(u)} />
+                </div>
                 <p className="text-sm font-bold text-slate-600 tabular-nums">{u.totalPoints}</p>
               </div>
             ))}
