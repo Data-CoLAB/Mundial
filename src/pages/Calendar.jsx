@@ -6,13 +6,13 @@ import Flag from '../components/Flag'
 import Bracket from '../components/Bracket'
 
 const STAGES = [
+  { id: 'bracket', label: 'Quadro' },
   { id: 'groups', label: 'Grupos' },
   { id: 'R32', label: '16-avos' },
   { id: 'R16', label: 'Oitavos' },
   { id: 'QF', label: 'Quartos' },
   { id: 'SF', label: 'Meias' },
   { id: 'Final', label: 'Final' },
-  { id: 'bracket', label: 'Quadro' },
 ]
 
 const STAGE_TITLE = {
@@ -179,7 +179,7 @@ function KnockoutList({ matches, extra }) {
 export default function Calendar() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [stage, setStage] = useState('groups')
+  const [stage, setStage] = useState('bracket')
   const [activeGroup, setActiveGroup] = useState('K')
 
   useEffect(() => {
