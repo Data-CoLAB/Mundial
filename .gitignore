@@ -3,3 +3,6 @@ dist
 .env
 .env.local
 firebase-debug.log
+serviceAccountKey.json
+migrate-bets.mjs
+.playwright-cli/
