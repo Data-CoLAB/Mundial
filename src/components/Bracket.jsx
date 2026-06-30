@@ -15,6 +15,21 @@ const ROUNDS = [
 const ROW = 66          // altura (px) de cada "slot" na coluna R32
 const COLW = 132        // largura de cada coluna de jogos
 const GAP = 30          // largura da coluna de conectores
+const LISBON = 'Europe/Lisbon'
+
+// Etiqueta "dia hora · cidade" em hora de Portugal (a partir do instante UTC do pontapé de saída).
+function ptLabel(m) {
+  if (!m) return ''
+  let day = '', time = ''
+  if (m.kickoff) {
+    const d = new Date(m.kickoff)
+    day = d.toLocaleDateString('pt-PT', { timeZone: LISBON, day: 'numeric', month: 'short' }).replace('.', '')
+    time = ' ' + d.toLocaleTimeString('pt-PT', { timeZone: LISBON, hour: '2-digit', minute: '2-digit' }).replace(':', 'h')
+  } else if (m.date) {
+    day = new Date(m.date + 'T12:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' }).replace('.', '')
+  }
+  return `${day}${time}${m.venue ? ` · ${m.venue}` : ''}`
+}
 
 function TeamLine({ team, score, won, isPT }) {
   return (
@@ -47,11 +62,10 @@ function MatchCard({ m }) {
         <div className="border-t border-surface-border/60" />
         <TeamLine team={m?.away} score={m?.awayScore} won={awayWon} isPT={m?.away === 'Portugal'} />
       </div>
-      {m?.date && (
+      {(m?.kickoff || m?.date) && (
         <span className="absolute left-0 right-0 text-[8px] text-slate-400 text-center leading-none truncate px-0.5"
           style={{ top: 'calc(50% + 24px)' }}>
-          {new Date(m.date + 'T12:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' }).replace('.', '')}
-          {m.venue ? ` · ${m.venue}` : ''}
+          {ptLabel(m)}
         </span>
       )}
     </div>

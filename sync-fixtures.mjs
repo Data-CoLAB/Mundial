@@ -76,30 +76,54 @@ function splitTop(s, sep = '|') {
 const CODE_RE = /fb[a-z-]*\|([A-Za-z]{3})/
 const SCORE_RE = /(\d+)\s*[–\-−]\s*(\d+)/
 const DATE_RE = /Start date\|(\d+)\|(\d+)\|(\d+)/
+const TIME_RE = /(\d{1,2}):(\d{2})\s*(?:&nbsp;|&#160;|\s)*([ap])\.?\s*m/i
+const OFF_RE = new RegExp('UTC([\\u2212+\\-])(\\d{2}):(\\d{2})')
+const LINK_RE = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g
+
+// Último link de uma linha — usado para a cidade no campo |stadium=[[Estádio]], [[Cidade]].
+function lastLinkLabel(s) {
+  let m, last = null
+  LINK_RE.lastIndex = 0
+  while ((m = LINK_RE.exec(s))) last = (m[2] || m[1]).trim()
+  return last
+}
+
+// Instante UTC do pontapé de saída a partir da hora local + offset (ex.: "1:00 p.m. UTC−6").
+function kickoffISO(dateISO, timeLine) {
+  if (!dateISO || !timeLine) return null
+  const tm = timeLine.match(TIME_RE), om = timeLine.match(OFF_RE)
+  if (!tm || !om) return null
+  let h = parseInt(tm[1], 10) % 12
+  if (/p/i.test(tm[3])) h += 12
+  const minute = parseInt(tm[2], 10)
+  const offMin = (om[1] === '+' ? 1 : -1) * (parseInt(om[2], 10) * 60 + parseInt(om[3], 10))
+  const [Y, Mo, D] = dateISO.split('-').map(Number)
+  return new Date(Date.UTC(Y, Mo - 1, D, h, minute) - offMin * 60000).toISOString()
+}
 
 function parseFootballBoxes(wt) {
   const boxes = []
-  const parts = wt.split('#invoke:football box')
+  const parts = wt.split(/#invoke:football box/i) // grupos: minúscula; fase a eliminar: maiúscula
   for (let p = 1; p < parts.length; p++) {
     const lines = parts[p].split('\n')
-    let date = null, t1 = null, t2 = null, score = null
+    let date = null, t1 = null, t2 = null, score = null, timeLine = null, city = null
     for (const ln of lines) {
       const s = ln.trim()
       if (date === null && s.startsWith('|date=')) {
         const m = s.match(DATE_RE)
         if (m) date = `${m[1]}-${String(+m[2]).padStart(2, '0')}-${String(+m[3]).padStart(2, '0')}`
-      } else if (t1 === null && s.startsWith('|team1=')) {
-        const m = s.match(CODE_RE); if (m) t1 = m[1]
-      } else if (t2 === null && s.startsWith('|team2=')) {
-        const m = s.match(CODE_RE); if (m) t2 = m[1]
-      } else if (score === null && s.startsWith('|score=')) {
-        const m = s.match(SCORE_RE); if (m) score = [+m[1], +m[2]]
       }
+      if (t1 === null && s.startsWith('|team1=')) { const m = s.match(CODE_RE); if (m) t1 = m[1] }
+      if (t2 === null && s.startsWith('|team2=')) { const m = s.match(CODE_RE); if (m) t2 = m[1] }
+      if (score === null && s.startsWith('|score=')) { const m = s.match(SCORE_RE); if (m) score = [+m[1], +m[2]] }
+      if (timeLine === null && s.startsWith('|time=')) timeLine = s
+      if (city === null && s.startsWith('|stadium=')) city = lastLinkLabel(s)
     }
-    if (t1 && t2) boxes.push({
-      home: pt(t1), away: pt(t2),
+    // Inclui caixas sem equipas (fase a eliminar por definir) — servem para a hora via (data, cidade).
+    if (date) boxes.push({
+      home: t1 ? pt(t1) : null, away: t2 ? pt(t2) : null,
       homeScore: score ? score[0] : null, awayScore: score ? score[1] : null,
-      date,
+      date, kickoff: kickoffISO(date, timeLine), city,
     })
   }
   return boxes
@@ -173,16 +197,37 @@ async function build() {
   for (const L of 'ABCDEFGHIJKL') {
     const wt = await wikitext('2026 FIFA World Cup Group ' + L)
     const matches = parseFootballBoxes(wt)
+      .filter((b) => b.home && b.away)
+      .map((b) => ({ date: b.date, kickoff: b.kickoff, home: b.home, away: b.away, homeScore: b.homeScore, awayScore: b.awayScore }))
     matches.forEach((b, i) => (b.jornada = Math.floor(i / 2) + 1))
     if (matches.length !== 6) throw new Error(`Grupo ${L}: esperava 6 jogos, obtive ${matches.length}`)
     const allPlayed = matches.every((m) => m.homeScore !== null)
     groups.push({ id: L, isPortugal: L === 'K', matches, order: allPlayed ? computeOrder(matches) : null })
     process.stderr.write(`Grupo ${L}: ${matches.length} jogos${allPlayed ? ' (classificação calculada)' : ''}\n`)
   }
+
   const koWt = await wikitext('2026 FIFA World Cup knockout stage')
   const knockout = parseBracket(koWt)
+
+  // Horários da fase a eliminar: chave (data|cidade), única em todo o quadro.
+  // R16/QF/SF/3º estão inline na página da fase; R32 e Final em subpáginas próprias.
+  const kick = {}
+  const collect = (boxes) => boxes.forEach((b) => { if (b.date && b.city && b.kickoff) kick[`${b.date}|${b.city}`] = b.kickoff })
+  collect(parseFootballBoxes(koWt))
+  collect(parseFootballBoxes(await wikitext('2026 FIFA World Cup round of 32')))
+  collect(parseFootballBoxes(await wikitext('2026 FIFA World Cup final')))
+  let matched = 0, total = 0
+  for (const rd of Object.keys(knockout)) for (const m of knockout[rd]) {
+    total++
+    m.kickoff = kick[`${m.date}|${m.venue}`] || null
+    if (m.kickoff) matched++
+  }
+  process.stderr.write(`Fase a eliminar: ${matched}/${total} jogos com hora\n`)
+
   return { groups, knockout, source: 'en.wikipedia.org', updatedAt: new Date().toISOString() }
 }
+
+const ptTime = (iso) => iso ? new Date(iso).toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '(sem hora)'
 
 function printSummary(data) {
   console.log('\n================ FASE DE GRUPOS ================')
@@ -190,7 +235,7 @@ function printSummary(data) {
     console.log(`\n--- Grupo ${g.id}${g.isPortugal ? ' 🇵🇹' : ''} ---  ordem: ${g.order ? g.order.join(' > ') : '(incompleta)'}`)
     for (const m of g.matches) {
       const sc = m.homeScore !== null ? `${m.homeScore}-${m.awayScore}` : 'vs'
-      console.log(`  J${m.jornada} ${m.date}  ${m.home.padStart(16)} ${sc.padStart(5)} ${m.away}`)
+      console.log(`  J${m.jornada} ${ptTime(m.kickoff).padEnd(18)}(PT)  ${m.home.padStart(16)} ${sc.padStart(5)} ${m.away}`)
     }
   }
   console.log('\n================ FASE A ELIMINAR ================')
@@ -199,7 +244,7 @@ function printSummary(data) {
     for (const m of data.knockout[rd]) {
       const sc = m.homeScore !== null ? `${m.homeScore}-${m.awayScore}` : 'vs'
       const h = (m.home || '?').padStart(16), a = m.away || '?'
-      console.log(`  ${(m.date || '').padStart(10)} ${(m.venue || '').padEnd(16)} ${h} ${sc.padStart(5)} ${a}`)
+      console.log(`  ${ptTime(m.kickoff).padEnd(18)}(PT) ${(m.venue || '').padEnd(15)} ${h} ${sc.padStart(5)} ${a}`)
     }
   }
   const played = data.knockout.R32.filter((m) => m.homeScore !== null).length

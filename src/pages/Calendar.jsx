@@ -46,6 +46,17 @@ function computeStandings(group) {
   return rows
 }
 
+const LISBON = 'Europe/Lisbon'
+// Dia (YYYY-MM-DD) e hora em Portugal, a partir do instante UTC do pontapé de saída.
+function ptDate(match) {
+  if (match.kickoff) return new Date(match.kickoff).toLocaleDateString('en-CA', { timeZone: LISBON })
+  return match.date
+}
+function ptTime(match) {
+  if (!match.kickoff) return null
+  return new Date(match.kickoff).toLocaleTimeString('pt-PT', { timeZone: LISBON, hour: '2-digit', minute: '2-digit' }).replace(':', 'h')
+}
+
 function matchDateLabel(dateStr) {
   if (!dateStr) return { label: 'TBD' }
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -59,7 +70,8 @@ function matchDateLabel(dateStr) {
 
 function MatchRow({ match, isPortugalGroup, showVenue }) {
   const played = match.homeScore !== null && match.homeScore !== undefined
-  const { label, isToday, isTomorrow } = matchDateLabel(match.date)
+  const { label, isToday, isTomorrow } = matchDateLabel(ptDate(match))
+  const time = ptTime(match)
   const isPTHome = match.home === 'Portugal'
   const isPTAway = match.away === 'Portugal'
   const homeWon = played && match.homeScore > match.awayScore
@@ -80,14 +92,15 @@ function MatchRow({ match, isPortugalGroup, showVenue }) {
       </div>
 
       {/* Center */}
-      <div className="shrink-0 w-[4.5rem] text-center">
+      <div className="shrink-0 w-20 text-center leading-tight">
         {played ? (
           <span className="text-gold font-black text-base tracking-tight">{match.homeScore} – {match.awayScore}</span>
         ) : (
           <span className={`text-xs font-bold ${isToday ? 'text-amber-600' : isTomorrow ? 'text-gold/70' : 'text-slate-500'}`}>{label}</span>
         )}
+        {time && <span className="block text-[10px] font-semibold text-slate-500 mt-0.5">{time}</span>}
         {showVenue && match.venue && (
-          <span className="block text-[9px] text-slate-400 truncate leading-tight mt-0.5">{match.venue}</span>
+          <span className="block text-[9px] text-slate-400 truncate leading-tight">{match.venue}</span>
         )}
       </div>
 
@@ -165,7 +178,7 @@ function KnockoutList({ matches, extra }) {
   if (!matches || matches.length === 0) {
     return <div className="card p-6 text-center text-slate-400 text-sm">Ainda sem jogos definidos para esta fase.</div>
   }
-  const sorted = [...matches].sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+  const sorted = [...matches].sort((a, b) => (a.kickoff || a.date || '').localeCompare(b.kickoff || b.date || ''))
   return (
     <div className="space-y-4">
       <div className="card overflow-hidden divide-y divide-surface-border px-4 py-3 space-y-2">
