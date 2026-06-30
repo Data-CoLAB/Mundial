@@ -185,9 +185,11 @@ function parseBracket(wt) {
       venue = (label || target).trim()
     }
     const team = (c) => { const cc = c.match(CODE_RE); if (cc) return pt(cc[1]); return null } // Winner/Loser -> null
-    const num = (c) => { const v = c.trim(); return /^\d+$/.test(v) ? +v : null }
+    const num = (c) => { const m = c.trim().match(/^(\d+)/); return m ? +m[1] : null }     // "1 (3)" -> 1
+    const pen = (c) => { const m = c.match(/\((\d+)\)/); return m ? +m[1] : null }          // "1 (3)" -> 3 (penáltis)
     const home = team(cells[2] || ''), away = team(cells[4] || '')
-    ko[round].push({ date, venue, home, away, homeScore: num(cells[3] || ''), awayScore: num(cells[5] || '') })
+    const c3 = cells[3] || '', c5 = cells[5] || ''
+    ko[round].push({ date, venue, home, away, homeScore: num(c3), awayScore: num(c5), homePen: pen(c3), awayPen: pen(c5) })
   }
   return ko
 }

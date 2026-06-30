@@ -74,8 +74,9 @@ function MatchRow({ match, isPortugalGroup, showVenue }) {
   const time = ptTime(match)
   const isPTHome = match.home === 'Portugal'
   const isPTAway = match.away === 'Portugal'
-  const homeWon = played && match.homeScore > match.awayScore
-  const awayWon = played && match.awayScore > match.homeScore
+  const hasPen = match.homePen != null && match.awayPen != null
+  const homeWon = played && (match.homeScore > match.awayScore || (match.homeScore === match.awayScore && hasPen && match.homePen > match.awayPen))
+  const awayWon = played && (match.awayScore > match.homeScore || (match.awayScore === match.homeScore && hasPen && match.awayPen > match.homePen))
 
   return (
     <div className={`flex items-center gap-2 py-2.5 px-3 rounded-xl ${
@@ -99,6 +100,7 @@ function MatchRow({ match, isPortugalGroup, showVenue }) {
           <span className={`text-xs font-bold ${isToday ? 'text-amber-600' : isTomorrow ? 'text-gold/70' : 'text-slate-500'}`}>{label}</span>
         )}
         {time && <span className="block text-[10px] font-semibold text-slate-500 mt-0.5">{time}</span>}
+        {hasPen && <span className="block text-[9px] font-semibold text-slate-400 leading-none">g.p. {match.homePen}–{match.awayPen}</span>}
         {showVenue && match.venue && (
           <span className="block text-[9px] text-slate-400 truncate leading-tight">{match.venue}</span>
         )}

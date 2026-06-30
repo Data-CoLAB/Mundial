@@ -31,7 +31,7 @@ function ptLabel(m) {
   return `${day}${time}${m.venue ? ` · ${m.venue}` : ''}`
 }
 
-function TeamLine({ team, score, won, isPT }) {
+function TeamLine({ team, score, pen, won, isPT }) {
   return (
     <div className={`flex items-center gap-1.5 px-1.5 h-[22px] ${won ? 'bg-gold/10' : ''}`}>
       <Flag team={team} size={15} />
@@ -41,7 +41,7 @@ function TeamLine({ team, score, won, isPT }) {
         {team || '?'}
       </span>
       <span className={`text-[11px] font-mono shrink-0 ${won ? 'font-black text-gold' : 'text-slate-400'}`}>
-        {score === null || score === undefined ? '' : score}
+        {score === null || score === undefined ? '' : pen != null ? `${score} (${pen})` : score}
       </span>
     </div>
   )
@@ -49,8 +49,9 @@ function TeamLine({ team, score, won, isPT }) {
 
 function MatchCard({ m }) {
   const played = m && m.homeScore !== null && m.homeScore !== undefined
-  const homeWon = played && m.homeScore > m.awayScore
-  const awayWon = played && m.awayScore > m.homeScore
+  const hasPen = m && m.homePen != null && m.awayPen != null
+  const homeWon = played && (m.homeScore > m.awayScore || (m.homeScore === m.awayScore && hasPen && m.homePen > m.awayPen))
+  const awayWon = played && (m.awayScore > m.homeScore || (m.awayScore === m.homeScore && hasPen && m.awayPen > m.homePen))
   const ptInvolved = m && (m.home === 'Portugal' || m.away === 'Portugal')
   return (
     // O slot tem altura ROW e centra a CAIXA verticalmente — assim os conectores
@@ -58,9 +59,9 @@ function MatchCard({ m }) {
     // A data fica posicionada por baixo, sem afetar a centragem.
     <div className="relative flex items-center" style={{ height: ROW }}>
       <div className={`w-full rounded-lg border bg-surface overflow-hidden shadow-sm ${ptInvolved ? 'border-pt/40 ring-1 ring-pt/20' : 'border-surface-border'}`}>
-        <TeamLine team={m?.home} score={m?.homeScore} won={homeWon} isPT={m?.home === 'Portugal'} />
+        <TeamLine team={m?.home} score={m?.homeScore} pen={m?.homePen} won={homeWon} isPT={m?.home === 'Portugal'} />
         <div className="border-t border-surface-border/60" />
-        <TeamLine team={m?.away} score={m?.awayScore} won={awayWon} isPT={m?.away === 'Portugal'} />
+        <TeamLine team={m?.away} score={m?.awayScore} pen={m?.awayPen} won={awayWon} isPT={m?.away === 'Portugal'} />
       </div>
       {(m?.kickoff || m?.date) && (
         <span className="absolute left-0 right-0 text-[8px] text-slate-400 text-center leading-none truncate px-0.5"
